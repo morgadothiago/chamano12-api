@@ -2,7 +2,7 @@ services:
   - type: web
     name: chama12-api
     runtime: node
-    plan: starter
+    plan: free
     buildCommand: npm install && npm run build && npm run db:migrate
     startCommand: npm run start:prod
     envVars:
@@ -20,10 +20,9 @@ services:
         value: local
       - key: STORAGE_LOCAL_DIR
         value: uploads
-    disk:
-      name: chama12-uploads
-      mountPath: /opt/render/project/src/uploads
-      sizeGB: 1
+    # Sem disco persistente no plano free — uploads em `uploads/` somem a cada
+    # redeploy/restart. Aceitável pra testar agora; trocar STORAGE_PROVIDER
+    # pra um provider de object storage (ex: Cloudflare R2) antes de produção.
 
 databases:
   - name: chama12-db
