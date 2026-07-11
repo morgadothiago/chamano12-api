@@ -29,6 +29,13 @@
       "when": 1783723000000,
       "tag": "0003_smart_rides",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1783750000000,
+      "tag": "0004_pricing_config",
+      "breakpoints": true
     }
   ]
 }

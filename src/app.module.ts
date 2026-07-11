@@ -8,6 +8,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { DriversModule } from './modules/drivers/drivers.module';
 import { RidesModule } from './modules/rides/rides.module';
 import { WsModule } from './modules/ws/ws.module';
+import { PricingModule } from './modules/pricing/pricing.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { WsModule } from './modules/ws/ws.module';
     DriversModule,
     RidesModule,
     WsModule,
+    PricingModule,
   ],
 })
 export class AppModule {}
