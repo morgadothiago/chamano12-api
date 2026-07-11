@@ -3,7 +3,7 @@ services:
     name: chama12-api
     runtime: node
     plan: free
-    buildCommand: npm install --include=dev && npm run build && npm run db:migrate
+    buildCommand: npm install --include=dev && npm run build && npm run db:migrate && npm run db:seed
     startCommand: npm run start:prod
     envVars:
       - key: NODE_ENV
