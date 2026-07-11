@@ -1,0 +1,1 @@
+CREATE DATABASE chama12_test;

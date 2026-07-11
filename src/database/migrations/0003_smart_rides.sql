@@ -1,0 +1,25 @@
+CREATE TYPE "public"."ride_status" AS ENUM('solicitada', 'aceita', 'iniciada', 'finalizada', 'cancelada');
+CREATE TYPE "public"."ride_cancelado_por" AS ENUM('motorista', 'passageiro', 'sistema');
+
+ALTER TABLE "rides" ADD COLUMN "passenger_id" text;
+ALTER TABLE "rides" ADD COLUMN "passenger_name" text NOT NULL DEFAULT '';
+ALTER TABLE "rides" ADD COLUMN "passenger_phone" text;
+ALTER TABLE "rides" ADD COLUMN "origem_lat" numeric(10,7) NOT NULL DEFAULT 0;
+ALTER TABLE "rides" ADD COLUMN "origem_lng" numeric(10,7) NOT NULL DEFAULT 0;
+ALTER TABLE "rides" ADD COLUMN "destino_lat" numeric(10,7) NOT NULL DEFAULT 0;
+ALTER TABLE "rides" ADD COLUMN "destino_lng" numeric(10,7) NOT NULL DEFAULT 0;
+ALTER TABLE "rides" ADD COLUMN "status" "public"."ride_status" NOT NULL DEFAULT 'solicitada';
+ALTER TABLE "rides" ADD COLUMN "distancia_km" numeric(8,2);
+ALTER TABLE "rides" ADD COLUMN "solicitada_em" timestamp DEFAULT now() NOT NULL;
+ALTER TABLE "rides" ADD COLUMN "aceita_em" timestamp;
+ALTER TABLE "rides" ADD COLUMN "iniciada_em" timestamp;
+ALTER TABLE "rides" ADD COLUMN "finalizada_em" timestamp;
+ALTER TABLE "rides" ADD COLUMN "cancelada_em" timestamp;
+ALTER TABLE "rides" ADD COLUMN "cancelado_por" "public"."ride_cancelado_por";
+ALTER TABLE "rides" ADD COLUMN "motivo_cancelamento" text;
+ALTER TABLE "rides" ADD COLUMN "updated_at" timestamp DEFAULT now() NOT NULL;
+ALTER TABLE "rides" DROP COLUMN "data";
+ALTER TABLE "rides" ALTER COLUMN "driver_id" DROP NOT NULL;
+ALTER TABLE "rides" ALTER COLUMN "valor" DROP NOT NULL;
+ALTER TABLE "rides" DROP CONSTRAINT "rides_driver_id_drivers_id_fk";
+ALTER TABLE "rides" ADD CONSTRAINT "rides_driver_id_fk" FOREIGN KEY ("driver_id") REFERENCES "public"."drivers"("id") ON DELETE SET NULL;

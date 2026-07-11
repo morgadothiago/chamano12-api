@@ -1,0 +1,1 @@
+ALTER TABLE "drivers" ALTER COLUMN "endereco_uf" SET DATA TYPE varchar(2);

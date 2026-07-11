@@ -1,0 +1,332 @@
+import {
+  WebSocketGateway,
+  WebSocketServer,
+  SubscribeMessage,
+  OnGatewayConnection,
+  OnGatewayDisconnect,
+  WsException,
+} from '@nestjs/websockets';
+import { Server, Socket } from 'socket.io';
+import { Injectable, Logger } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { RidesService } from '../rides/rides.service';
+import { RidesRepository } from '../rides/rides.repository';
+import { DriversRepository } from '../drivers/drivers.repository';
+import { DriverLocationStore } from '../../shared/location/driver-location.store';
+
+/**
+ * Gateway único /ws que aceita:
+ * - Motoristas: auth com JWT (role=driver)
+ * - Passageiros: query param deviceId (anônimo)
+ */
+interface AppSocket extends Socket {
+  user?: { sub: string; email: string; name: string; role: string };
+  passengerId?: string;
+}
+
+@Injectable()
+@WebSocketGateway({
+  cors: { origin: '*', credentials: true },
+  namespace: '/ws',
+})
+export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect {
+  private readonly logger = new Logger(WsAppGateway.name);
+
+  @WebSocketServer()
+  server!: Server;
+
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly ridesService: RidesService,
+    private readonly ridesRepository: RidesRepository,
+    private readonly driversRepository: DriversRepository,
+    private readonly locationStore: DriverLocationStore,
+  ) {}
+
+  async handleConnection(client: AppSocket): Promise<void> {
+    // Tenta autenticar como motorista (JWT)
+    const token = this.extractToken(client);
+    if (token) {
+      try {
+        const payload = await this.jwtService.verifyAsync(token);
+        client.user = payload;
+        client.join(`user:${payload.sub}`);
+        this.logger.log(`Motorista conectado: ${payload.email}`);
+        return;
+      } catch {
+        client.emit('error', { code: 'INVALID_TOKEN', message: 'Token inválido.' });
+        client.disconnect();
+        return;
+      }
+    }
+
+    // Tenta autenticar como passageiro (deviceId)
+    const deviceId = client.handshake.query.deviceId as string | undefined;
+    if (deviceId) {
+      client.passengerId = deviceId;
+      client.join(`passenger:${deviceId}`);
+      this.logger.log(`Passageiro conectado: ${deviceId}`);
+      return;
+    }
+
+    client.emit('error', {
+      code: 'AUTH_REQUIRED',
+      message: 'Envie JWT (motorista) ou deviceId (passageiro).',
+    });
+    client.disconnect();
+  }
+
+  handleDisconnect(client: AppSocket): void {
+    if (client.user) {
+      this.locationStore.delete(client.user.sub);
+      this.logger.log(`Motorista desconectado: ${client.user.name}`);
+    }
+    if (client.passengerId) {
+      this.logger.log(`Passageiro desconectado: ${client.passengerId}`);
+    }
+  }
+
+  // ── Motorista ─────────────────────────────────────────────────────────
+
+  @SubscribeMessage('driver:go-online')
+  async handleDriverGoOnline(
+    client: AppSocket,
+    payload: { lat: number; lng: number },
+  ) {
+    const user = this.requireDriver(client);
+    const driver = await this.driversRepository.findByUserId(user.sub);
+    if (!driver || driver.status !== 'ativo') {
+      throw new WsException('Motorista não encontrado ou não está ativo.');
+    }
+    const vehicle = `${driver.veiculoModelo} ${driver.veiculoPlaca}`;
+    this.locationStore.set(user.sub, {
+      driverId: user.sub,
+      driverName: user.name,
+      vehicle,
+      lat: payload.lat,
+      lng: payload.lng,
+      status: 'available',
+    });
+    client.join('drivers');
+    client.emit('driver:online-confirmed', { driverId: user.sub });
+    this.logger.log(`Motorista online: ${user.name}`);
+  }
+
+  @SubscribeMessage('driver:location-update')
+  async handleDriverLocationUpdate(
+    client: AppSocket,
+    payload: { lat: number; lng: number },
+  ) {
+    const user = this.requireDriver(client);
+    const entry = this.locationStore.get(user.sub);
+    if (!entry) throw new WsException('Motorista não está online.');
+    entry.lat = payload.lat;
+    entry.lng = payload.lng;
+    this.locationStore.set(user.sub, entry);
+    client.to(`ride:${user.sub}`).emit('ride:driver-location', {
+      driverId: user.sub,
+      lat: payload.lat,
+      lng: payload.lng,
+    });
+  }
+
+  @SubscribeMessage('driver:go-offline')
+  async handleDriverGoOffline(client: AppSocket) {
+    const user = this.requireDriver(client);
+    this.locationStore.delete(user.sub);
+    client.leave('drivers');
+    client.emit('driver:offline-confirmed', { driverId: user.sub });
+    this.logger.log(`Motorista offline: ${user.name}`);
+  }
+
+  @SubscribeMessage('driver:accept-ride')
+  async handleDriverAcceptRide(
+    client: AppSocket,
+    payload: { rideId: string },
+  ) {
+    const user = this.requireDriver(client);
+    try {
+      const driver = await this.driversRepository.findByUserId(user.sub);
+      if (!driver) throw new WsException('Motorista não encontrado.');
+
+      const ride = await this.ridesService.acceptRide(payload.rideId, driver.id);
+
+      const entry = this.locationStore.get(user.sub);
+      if (entry) entry.status = 'busy';
+
+      client.join(`ride:${ride.id}`);
+
+      this.server.to(`passenger:${ride.passengerId}`).emit('ride:accepted', {
+        rideId: ride.id,
+        driverId: user.sub,
+        driverName: user.name,
+        vehicle: entry?.vehicle ?? '',
+        lat: entry?.lat ?? 0,
+        lng: entry?.lng ?? 0,
+      });
+
+      this.logger.log(`Corrida ${ride.id} aceita por ${user.name}`);
+    } catch (e: any) {
+      throw new WsException(e?.message ?? 'Erro ao aceitar corrida.');
+    }
+  }
+
+  @SubscribeMessage('driver:start-ride')
+  async handleDriverStartRide(
+    client: AppSocket,
+    payload: { rideId: string },
+  ) {
+    const user = this.requireDriver(client);
+    try {
+      const ride = await this.ridesService.startRide(payload.rideId);
+      this.server.to(`passenger:${ride.passengerId}`).emit('ride:started', {
+        rideId: ride.id,
+        status: 'iniciada',
+      });
+    } catch (e: any) {
+      throw new WsException(e?.message ?? 'Erro ao iniciar corrida.');
+    }
+  }
+
+  @SubscribeMessage('driver:complete-ride')
+  async handleDriverCompleteRide(
+    client: AppSocket,
+    payload: { rideId: string },
+  ) {
+    const user = this.requireDriver(client);
+    try {
+      const ride = await this.ridesService.completeRide(payload.rideId);
+      const entry = this.locationStore.get(user.sub);
+      if (entry) entry.status = 'available';
+      client.leave(`ride:${ride.id}`);
+      this.server.to(`passenger:${ride.passengerId}`).emit('ride:completed', {
+        rideId: ride.id,
+        status: 'finalizada',
+      });
+    } catch (e: any) {
+      throw new WsException(e?.message ?? 'Erro ao finalizar corrida.');
+    }
+  }
+
+  // ── Passageiro ─────────────────────────────────────────────────────────
+
+  @SubscribeMessage('passenger:request-ride')
+  async handlePassengerRequestRide(
+    client: AppSocket,
+    payload: {
+      passengerName: string;
+      origem: string;
+      origemLat: number;
+      origemLng: number;
+      destino: string;
+      destinoLat: number;
+      destinoLng: number;
+      distanciaKm?: number;
+      valor?: number;
+    },
+  ) {
+    const passengerId = client.passengerId;
+    if (!passengerId) throw new WsException('Passageiro não identificado.');
+
+    const ride = await this.ridesService.createRideRequest({
+      passengerId,
+      passengerName: payload.passengerName,
+      origem: payload.origem,
+      origemLat: payload.origemLat,
+      origemLng: payload.origemLng,
+      destino: payload.destino,
+      destinoLat: payload.destinoLat,
+      destinoLng: payload.destinoLng,
+      distanciaKm: payload.distanciaKm,
+      valor: payload.valor,
+    });
+
+    const nearby = this.locationStore.findNearby(payload.origemLat, payload.origemLng, 5);
+
+    if (nearby.length === 0) {
+      client.emit('ride:no-drivers-nearby', { rideId: ride.id });
+      return;
+    }
+
+    for (const driver of nearby) {
+      client.to(`user:${driver.driverId}`).emit('ride:new-request', {
+        rideId: ride.id,
+        passengerName: payload.passengerName,
+        origem: payload.origem,
+        origemLat: payload.origemLat,
+        origemLng: payload.origemLng,
+        destino: payload.destino,
+        destinoLat: payload.destinoLat,
+        destinoLng: payload.destinoLng,
+        distanciaKm: payload.distanciaKm ?? 0,
+        valor: payload.valor ?? 0,
+      });
+    }
+
+    client.emit('ride:searching-drivers', {
+      rideId: ride.id,
+      driversNotified: nearby.length,
+    });
+
+    setTimeout(async () => {
+      try {
+        const current = await this.ridesRepository.findById(ride.id);
+        if (current && current.status === 'solicitada') {
+          await this.ridesService.cancelRide(ride.id, 'sistema', 'Tempo limite excedido');
+          client.emit('ride:timed-out', { rideId: ride.id });
+        }
+      } catch {}
+    }, 30000);
+  }
+
+  @SubscribeMessage('ride:cancel')
+  async handleCancel(client: AppSocket, payload: { rideId: string; motivo?: string }) {
+    let canceladoPor: 'motorista' | 'passageiro' | 'sistema';
+    if (client.user) canceladoPor = 'motorista';
+    else if (client.passengerId) canceladoPor = 'passageiro';
+    else throw new WsException('Não autorizado.');
+
+    let ride;
+    try {
+      ride = await this.ridesService.cancelRide(payload.rideId, canceladoPor, payload.motivo);
+    } catch (e: any) {
+      throw new WsException(e?.message ?? 'Erro ao cancelar corrida.');
+    }
+
+    if (ride!.driverId) {
+      const entry = this.locationStore.get(ride.driverId);
+      if (entry) entry.status = 'available';
+    }
+
+    if (canceladoPor === 'passageiro') {
+      client.to(`user:${ride.driverId}`).emit('ride:cancelled', {
+        rideId: ride.id,
+        canceladoPor,
+        motivo: payload.motivo,
+      });
+    } else {
+      client.to(`passenger:${ride.passengerId}`).emit('ride:cancelled', {
+        rideId: ride.id,
+        canceladoPor,
+        motivo: payload.motivo,
+      });
+    }
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+
+  private extractToken(client: Socket): string | null {
+    const auth = client.handshake.auth?.token as string | undefined;
+    if (auth) return auth;
+    const header = client.handshake.headers.authorization;
+    if (header?.startsWith('Bearer ')) return header.slice(7);
+    return null;
+  }
+
+  private requireDriver(client: AppSocket) {
+    if (!client.user || client.user.role !== 'driver') {
+      throw new WsException('Apenas motoristas autenticados.');
+    }
+    return client.user;
+  }
+}
