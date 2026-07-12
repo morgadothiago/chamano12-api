@@ -20,7 +20,7 @@ describe('AuthController', () => {
   it('login delegates to AuthService.login', async () => {
     authService.login.mockResolvedValue({
       token: 'jwt',
-      user: { id: '1', name: 'Admin', email: 'admin@example.com', role: 'admin' },
+      user: { id: '1', name: 'Admin', email: 'admin@example.com', role: 'admin', phone: null },
     });
 
     const result = await controller.login({ email: 'admin@example.com', password: 'admin123' });
@@ -40,6 +40,7 @@ describe('AuthController', () => {
       name: 'Admin',
       email: 'a@a.com',
       role: 'admin',
+      phone: null,
     });
 
     const result = await controller.me(payload);

@@ -10,6 +10,7 @@ export interface IUserRecord {
   email: string;
   passwordHash: string;
   role: string;
+  phone: string | null;
 }
 
 @Injectable()
@@ -26,7 +27,13 @@ export class UsersRepository {
     return rows[0] ?? null;
   }
 
-  async create(data: { name: string; email: string; password: string; role?: string }): Promise<IUserRecord> {
+  async create(data: {
+    name: string;
+    email: string;
+    password: string;
+    role?: string;
+    phone?: string;
+  }): Promise<IUserRecord> {
     const passwordHash = await bcrypt.hash(data.password, 10);
     const [user] = await this.db
       .insert(users)
@@ -35,6 +42,7 @@ export class UsersRepository {
         email: data.email,
         passwordHash,
         role: data.role ?? 'driver',
+        phone: data.phone ?? null,
       })
       .returning();
     return user;

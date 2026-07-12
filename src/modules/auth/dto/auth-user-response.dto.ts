@@ -12,6 +12,9 @@ export class AuthUserResponseDto {
 
   @ApiProperty({ example: 'admin' })
   role!: string;
+
+  @ApiProperty({ example: '11912345678', nullable: true })
+  phone!: string | null;
 }
 
 export class LoginResponseDto {

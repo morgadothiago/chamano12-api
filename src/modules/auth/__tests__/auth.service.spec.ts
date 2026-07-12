@@ -16,6 +16,7 @@ describe('AuthService', () => {
     email: 'admin@example.com',
     passwordHash: '',
     role: 'admin',
+    phone: null,
   };
 
   beforeEach(async () => {

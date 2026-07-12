@@ -39,7 +39,13 @@ export class AuthService {
     return this.buildLoginResult(user);
   }
 
-  async register(data: { name: string; email: string; password: string; role?: string }): Promise<ILoginResult> {
+  async register(data: {
+    name: string;
+    email: string;
+    password: string;
+    role?: string;
+    phone?: string;
+  }): Promise<ILoginResult> {
     const existing = await this.usersRepository.findByEmail(data.email);
     if (existing) {
       throw new ConflictException({
@@ -60,7 +66,7 @@ export class AuthService {
         message: 'Usuário não encontrado.',
       });
     }
-    return { id: user.id, name: user.name, email: user.email, role: user.role };
+    return { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone };
   }
 
   /**
@@ -113,7 +119,13 @@ export class AuthService {
     await this.usersRepository.updatePassword(user.id, newPassword);
   }
 
-  private async buildLoginResult(user: { id: string; name: string; email: string; role: string }): Promise<ILoginResult> {
+  private async buildLoginResult(user: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    phone: string | null;
+  }): Promise<ILoginResult> {
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
@@ -125,7 +137,7 @@ export class AuthService {
 
     return {
       token,
-      user: { id: user.id, name: user.name, email: user.email, role: user.role },
+      user: { id: user.id, name: user.name, email: user.email, role: user.role, phone: user.phone },
     };
   }
 }

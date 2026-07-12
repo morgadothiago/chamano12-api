@@ -3,6 +3,7 @@ export interface IAuthUser {
   name: string;
   email: string;
   role: string;
+  phone: string | null;
 }
 
 export interface ILoginResult {

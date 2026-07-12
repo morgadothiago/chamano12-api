@@ -43,6 +43,13 @@
       "when": 1783760000000,
       "tag": "0005_password_reset_codes",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1783770000000,
+      "tag": "0006_add_phone_to_users",
+      "breakpoints": true
     }
   ]
 }

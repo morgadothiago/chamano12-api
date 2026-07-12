@@ -4,6 +4,7 @@ import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagg
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDriverDto } from './dto/register-driver.dto';
+import { RegisterPassengerDto } from './dto/register-passenger.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { LoginResponseDto, AuthUserResponseDto } from './dto/auth-user-response.dto';
@@ -37,6 +38,21 @@ export class AuthController {
       email: dto.email,
       password: dto.password,
       role: 'driver',
+    });
+  }
+
+  @Post('register-passenger')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Registro de novo usuário (role passenger) — emite JWT' })
+  @ApiResponse({ status: 201, description: 'Conta criada', type: LoginResponseDto })
+  @ApiResponse({ status: 409, description: 'Email já cadastrado' })
+  async registerPassenger(@Body() dto: RegisterPassengerDto) {
+    return this.authService.register({
+      name: dto.nome,
+      email: dto.email,
+      password: dto.password,
+      phone: dto.phone,
+      role: 'passenger',
     });
   }
 
