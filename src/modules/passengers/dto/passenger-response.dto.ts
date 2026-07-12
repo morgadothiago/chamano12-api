@@ -23,6 +23,9 @@ export class PassengerResponseDto {
   @ApiPropertyOptional({ example: '11912345678', nullable: true })
   telefone!: string | null;
 
+  @ApiPropertyOptional({ nullable: true })
+  avatarUrl!: string | null;
+
   @ApiProperty({ example: 'ativo', enum: ['ativo'] })
   status!: 'ativo';
 

@@ -50,6 +50,13 @@
       "when": 1783770000000,
       "tag": "0006_add_phone_to_users",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1783780000000,
+      "tag": "0007_add_passenger_profile_fields",
+      "breakpoints": true
     }
   ]
 }

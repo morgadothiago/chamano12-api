@@ -1,10 +1,29 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiBody, ApiConsumes, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { CurrentUser } from '../../shared/decorators/current-user.decorator';
 import { Roles } from '../../shared/decorators/roles.decorator';
+import { AppException } from '../../shared/filters/app-exception';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { RolesGuard } from '../../shared/guards/roles.guard';
+import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { ListPassengersQueryDto } from './dto/list-passengers-query.dto';
+import { PassengerMeResponseDto } from './dto/passenger-me-response.dto';
 import { PassengerResponseDto } from './dto/passenger-response.dto';
+import { UpdatePassengerProfileDto } from './dto/update-passenger-profile.dto';
 import { PassengersService } from './passengers.service';
 
 @ApiTags('passengers')
@@ -25,6 +44,41 @@ export class PassengersController {
       page: query.page ?? 1,
       limit: query.limit ?? 20,
     });
+  }
+
+  @Get('me')
+  @ApiOperation({ summary: 'Retorna o perfil do passageiro autenticado' })
+  @ApiResponse({ status: 200, description: 'Perfil encontrado', type: PassengerMeResponseDto })
+  @ApiResponse({ status: 401, description: 'Token ausente ou inválido' })
+  findMe(@CurrentUser() user: JwtPayload) {
+    return this.passengersService.findMe(user.sub);
+  }
+
+  @Patch('me')
+  @ApiOperation({ summary: 'Atualiza o endereço do passageiro autenticado' })
+  @ApiResponse({ status: 200, description: 'Perfil atualizado', type: PassengerMeResponseDto })
+  @ApiResponse({ status: 400, description: 'Dados inválidos' })
+  updateMe(@CurrentUser() user: JwtPayload, @Body() dto: UpdatePassengerProfileDto) {
+    return this.passengersService.updateMe(user.sub, dto);
+  }
+
+  @Post('me/avatar')
+  @HttpCode(HttpStatus.OK)
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } })
+  @ApiOperation({ summary: 'Troca a foto de perfil do passageiro autenticado (multipart/form-data)' })
+  @ApiResponse({ status: 200, description: 'Avatar atualizado', type: PassengerMeResponseDto })
+  @ApiResponse({ status: 400, description: 'Arquivo ausente' })
+  uploadAvatar(@CurrentUser() user: JwtPayload, @UploadedFile() file: Express.Multer.File | undefined) {
+    if (!file) {
+      throw new AppException(
+        'FILE_REQUIRED',
+        'Nenhum arquivo enviado (campo "file" no multipart/form-data).',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    return this.passengersService.updateAvatar(user.sub, file);
   }
 
   @Get(':id')

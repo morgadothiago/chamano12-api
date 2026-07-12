@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, varchar } from 'drizzle-orm/pg-core';
 
 /**
  * Usuários administrativos do painel ops. Nesta fase só existe o papel
@@ -13,6 +13,14 @@ export const users = pgTable('users', {
   passwordHash: text('password_hash').notNull(),
   role: text('role').notNull().default('admin'),
   phone: text('phone'),
+  avatarUrl: text('avatar_url'),
+  enderecoCep: text('endereco_cep'),
+  enderecoLogradouro: text('endereco_logradouro'),
+  enderecoNumero: text('endereco_numero'),
+  enderecoComplemento: text('endereco_complemento'),
+  enderecoBairro: text('endereco_bairro'),
+  enderecoCidade: text('endereco_cidade'),
+  enderecoUf: varchar('endereco_uf', { length: 2 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

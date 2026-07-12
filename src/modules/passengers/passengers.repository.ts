@@ -69,4 +69,35 @@ export class PassengersRepository {
       totalGasto: Number(row?.totalGasto ?? 0),
     };
   }
+
+  async updateProfile(
+    userId: string,
+    data: {
+      cep: string;
+      logradouro: string;
+      numero: string;
+      complemento?: string;
+      bairro: string;
+      cidade: string;
+      uf: string;
+    },
+  ) {
+    await this.db
+      .update(users)
+      .set({
+        enderecoCep: data.cep,
+        enderecoLogradouro: data.logradouro,
+        enderecoNumero: data.numero,
+        enderecoComplemento: data.complemento ?? null,
+        enderecoBairro: data.bairro,
+        enderecoCidade: data.cidade,
+        enderecoUf: data.uf.toUpperCase(),
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
+  }
+
+  async updateAvatar(userId: string, avatarUrl: string) {
+    await this.db.update(users).set({ avatarUrl, updatedAt: new Date() }).where(eq(users.id, userId));
+  }
 }
