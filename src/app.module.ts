@@ -9,6 +9,7 @@ import { DriversModule } from './modules/drivers/drivers.module';
 import { RidesModule } from './modules/rides/rides.module';
 import { WsModule } from './modules/ws/ws.module';
 import { PricingModule } from './modules/pricing/pricing.module';
+import { PassengersModule } from './modules/passengers/passengers.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { PricingModule } from './modules/pricing/pricing.module';
     RidesModule,
     WsModule,
     PricingModule,
+    PassengersModule,
   ],
 })
 export class AppModule {}
