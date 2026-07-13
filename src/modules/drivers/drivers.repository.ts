@@ -139,6 +139,15 @@ export class DriversRepository {
     return driver ?? null;
   }
 
+  async updateAvatarUrl(id: string, avatarUrl: string): Promise<DriverRow | null> {
+    const [driver] = await this.db
+      .update(drivers)
+      .set({ avatarUrl, updatedAt: new Date() })
+      .where(eq(drivers.id, id))
+      .returning();
+    return driver ?? null;
+  }
+
   async findDocuments(driverId: string): Promise<DriverDocumentRow[]> {
     return this.db.select().from(driverDocuments).where(eq(driverDocuments.driverId, driverId));
   }

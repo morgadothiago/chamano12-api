@@ -80,6 +80,25 @@ export class DriversController {
     return this.driversService.findByUserId(user.sub);
   }
 
+  @Post('me/avatar')
+  @HttpCode(HttpStatus.OK)
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } })
+  @ApiOperation({ summary: 'Troca a foto de perfil do motorista autenticado (multipart/form-data)' })
+  @ApiResponse({ status: 200, description: 'Avatar atualizado', type: DriverResponseDto })
+  @ApiResponse({ status: 400, description: 'Arquivo ausente' })
+  uploadAvatar(@CurrentUser() user: JwtPayload, @UploadedFile() file: Express.Multer.File | undefined) {
+    if (!file) {
+      throw new AppException(
+        'FILE_REQUIRED',
+        'Nenhum arquivo enviado (campo "file" no multipart/form-data).',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    return this.driversService.updateAvatar(user.sub, file);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Retorna motorista por ID' })
   @ApiParam({ name: 'id', description: 'UUID do motorista' })

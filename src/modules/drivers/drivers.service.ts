@@ -69,6 +69,26 @@ export class DriversService {
     return mapDriverRow(row, documentos, metrics);
   }
 
+  async updateAvatar(
+    userId: string,
+    file: { buffer: Buffer; originalname: string; mimetype: string },
+  ): Promise<IDriver> {
+    const driver = await this.driversRepository.findByUserId(userId);
+    if (!driver) {
+      throw this.notFound();
+    }
+
+    const stored = await this.storageProvider.save({
+      buffer: file.buffer,
+      originalName: file.originalname,
+      mimeType: file.mimetype,
+      folder: `drivers/${driver.id}`,
+    });
+
+    await this.driversRepository.updateAvatarUrl(driver.id, stored.url);
+    return this.findByUserId(userId);
+  }
+
   async create(data: ICreateDriver, userId?: string): Promise<IDriver> {
     const existing = await this.driversRepository.findByEmail(data.email);
     if (existing) {
