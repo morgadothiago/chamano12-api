@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { DRIZZLE, DrizzleDb } from '../../database/database.module';
 import { users } from '../../database/schema';
 import * as bcrypt from 'bcrypt';
@@ -11,6 +11,7 @@ export interface IUserRecord {
   passwordHash: string;
   role: string;
   phone: string | null;
+  sessionVersion: number;
 }
 
 @Injectable()
@@ -54,5 +55,19 @@ export class UsersRepository {
       .update(users)
       .set({ passwordHash, updatedAt: new Date() })
       .where(eq(users.id, userId));
+  }
+
+  /**
+   * Incrementa a versão de sessão e retorna o novo valor — chamado a cada
+   * login. Invalida automaticamente qualquer JWT/socket emitido antes desse
+   * ponto (garante no máximo 1 sessão ativa por conta).
+   */
+  async incrementSessionVersion(userId: string): Promise<number> {
+    const [row] = await this.db
+      .update(users)
+      .set({ sessionVersion: sql`${users.sessionVersion} + 1`, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning({ sessionVersion: users.sessionVersion });
+    return row.sessionVersion;
   }
 }

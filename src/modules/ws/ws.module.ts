@@ -4,11 +4,13 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { WsAppGateway } from './ws-passenger.gateway';
 import { RidesModule } from '../rides/rides.module';
 import { DriversModule } from '../drivers/drivers.module';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
     RidesModule,
     DriversModule,
+    AuthModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

@@ -23,8 +23,9 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Login efetuado', type: LoginResponseDto })
   @ApiResponse({ status: 400, description: 'Dados inválidos' })
   @ApiResponse({ status: 401, description: 'Credenciais inválidas' })
+  @ApiResponse({ status: 403, description: 'Conta não é de motorista (deviceType=motorista)' })
   async login(@Body() dto: LoginDto) {
-    return this.authService.login(dto.email, dto.password);
+    return this.authService.login(dto.email, dto.password, dto.deviceType);
   }
 
   @Post('register')

@@ -34,7 +34,7 @@ describe('AuthController', () => {
   });
 
   it('me delegates to AuthService.me with the authenticated user id', async () => {
-    const payload: JwtPayload = { sub: 'user-1', email: 'a@a.com', name: 'Admin', role: 'admin' };
+    const payload: JwtPayload = { sub: 'user-1', email: 'a@a.com', name: 'Admin', role: 'admin', sv: 0 };
     authService.me.mockResolvedValue({
       id: 'user-1',
       name: 'Admin',

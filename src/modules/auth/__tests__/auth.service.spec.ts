@@ -17,6 +17,7 @@ describe('AuthService', () => {
     passwordHash: '',
     role: 'admin',
     phone: null,
+    sessionVersion: 0,
   };
 
   beforeEach(async () => {
@@ -27,7 +28,11 @@ describe('AuthService', () => {
         AuthService,
         {
           provide: UsersRepository,
-          useValue: { findByEmail: jest.fn(), findById: jest.fn() },
+          useValue: {
+            findByEmail: jest.fn(),
+            findById: jest.fn(),
+            incrementSessionVersion: jest.fn().mockResolvedValue(1),
+          },
         },
         { provide: JwtService, useValue: { signAsync: jest.fn() } },
       ],
@@ -57,6 +62,7 @@ describe('AuthService', () => {
         email: 'admin@example.com',
         name: 'Admin',
         role: 'admin',
+        sv: 1,
       });
     });
 

@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, varchar } from 'drizzle-orm/pg-core';
+import { integer, pgTable, text, timestamp, varchar } from 'drizzle-orm/pg-core';
 
 /**
  * Usuários administrativos do painel ops. Nesta fase só existe o papel
@@ -21,6 +21,11 @@ export const users = pgTable('users', {
   enderecoBairro: text('endereco_bairro'),
   enderecoCidade: text('endereco_cidade'),
   enderecoUf: varchar('endereco_uf', { length: 2 }),
+  // Incrementado a cada login bem-sucedido. O JWT carrega o valor vigente no
+  // momento da emissão (`sv`); qualquer request/socket com `sv` diferente do
+  // valor atual em banco é de uma sessão anterior e é rejeitado — garante
+  // no máximo 1 sessão ativa por conta (login novo derruba o anterior).
+  sessionVersion: integer('session_version').notNull().default(0),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

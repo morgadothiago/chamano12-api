@@ -12,6 +12,7 @@ import { JwtService } from '@nestjs/jwt';
 import { RidesService } from '../rides/rides.service';
 import { RidesRepository } from '../rides/rides.repository';
 import { DriversRepository } from '../drivers/drivers.repository';
+import { UsersRepository } from '../auth/users.repository';
 import { DriverLocationStore } from '../../shared/location/driver-location.store';
 
 /**
@@ -20,7 +21,7 @@ import { DriverLocationStore } from '../../shared/location/driver-location.store
  * - Passageiros: query param deviceId (anônimo)
  */
 interface AppSocket extends Socket {
-  user?: { sub: string; email: string; name: string; role: string };
+  user?: { sub: string; email: string; name: string; role: string; sv: number };
   passengerId?: string;
 }
 
@@ -40,6 +41,7 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly ridesService: RidesService,
     private readonly ridesRepository: RidesRepository,
     private readonly driversRepository: DriversRepository,
+    private readonly usersRepository: UsersRepository,
     private readonly locationStore: DriverLocationStore,
   ) {}
 
@@ -49,6 +51,17 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (token) {
       try {
         const payload = await this.jwtService.verifyAsync(token);
+        const user = await this.usersRepository.findById(payload.sub);
+        if (!user || user.sessionVersion !== payload.sv) {
+          // Conta foi acessada em outro aparelho depois desse token ser
+          // emitido — mesma regra de sessão única aplicada no REST.
+          client.emit('error', {
+            code: 'SESSION_EXPIRED',
+            message: 'Sua sessão expirou porque a conta foi acessada em outro aparelho.',
+          });
+          client.disconnect();
+          return;
+        }
         client.user = payload;
         client.join(`user:${payload.sub}`);
         this.logger.log(`Motorista conectado: ${payload.email}`);
@@ -202,6 +215,8 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.server.to(`passenger:${ride.passengerId}`).emit('ride:completed', {
         rideId: ride.id,
         status: 'finalizada',
+        valor: ride.valor ?? 0,
+        formaPagamento: ride.formaPagamento,
       });
     } catch (e: any) {
       throw new WsException(e?.message ?? 'Erro ao finalizar corrida.');
@@ -223,6 +238,7 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect {
       destinoLng: number;
       distanciaKm?: number;
       valor?: number;
+      formaPagamento?: 'dinheiro' | 'cartao' | 'pix';
     },
   ) {
     const passengerId = client.passengerId;
@@ -239,6 +255,7 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect {
       destinoLng: payload.destinoLng,
       distanciaKm: payload.distanciaKm,
       valor: payload.valor,
+      formaPagamento: payload.formaPagamento,
     });
 
     const nearby = this.locationStore.findNearby(payload.origemLat, payload.origemLng, 5);
@@ -260,6 +277,7 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect {
         destinoLng: payload.destinoLng,
         distanciaKm: payload.distanciaKm ?? 0,
         valor: payload.valor ?? 0,
+        formaPagamento: payload.formaPagamento ?? 'dinheiro',
       });
     }
 

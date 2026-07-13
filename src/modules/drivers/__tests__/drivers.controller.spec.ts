@@ -9,7 +9,7 @@ describe('DriversController', () => {
   let controller: DriversController;
   let service: jest.Mocked<DriversService>;
 
-  const user: JwtPayload = { sub: 'user-1', email: 'a@a.com', name: 'Admin', role: 'admin' };
+  const user: JwtPayload = { sub: 'user-1', email: 'a@a.com', name: 'Admin', role: 'admin', sv: 0 };
 
   beforeEach(async () => {
     const module = await Test.createTestingModule({

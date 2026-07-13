@@ -27,6 +27,6 @@ import { MailModule } from '../../shared/mail/mail.module';
   ],
   controllers: [AuthController],
   providers: [AuthService, UsersRepository, PasswordResetRepository, JwtStrategy],
-  exports: [AuthService],
+  exports: [AuthService, UsersRepository],
 })
 export class AuthModule {}

@@ -1,4 +1,10 @@
-import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'node:crypto';
@@ -19,7 +25,11 @@ export class AuthService {
     private readonly mailService: MailService,
   ) {}
 
-  async login(email: string, password: string): Promise<ILoginResult> {
+  async login(
+    email: string,
+    password: string,
+    deviceType?: 'motorista' | 'passageiro',
+  ): Promise<ILoginResult> {
     const user = await this.usersRepository.findByEmail(email);
     if (!user) {
       throw new UnauthorizedException({
@@ -33,6 +43,13 @@ export class AuthService {
       throw new UnauthorizedException({
         code: 'INVALID_CREDENTIALS',
         message: 'Email ou senha inválidos.',
+      });
+    }
+
+    if (deviceType === 'motorista' && user.role !== 'driver') {
+      throw new ForbiddenException({
+        code: 'NOT_A_DRIVER',
+        message: 'Esta conta não é de motorista.',
       });
     }
 
@@ -126,11 +143,14 @@ export class AuthService {
     role: string;
     phone: string | null;
   }): Promise<ILoginResult> {
+    const sessionVersion = await this.usersRepository.incrementSessionVersion(user.id);
+
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
       name: user.name,
       role: user.role,
+      sv: sessionVersion,
     };
 
     const token = await this.jwtService.signAsync(payload);
