@@ -30,6 +30,7 @@ export class RidesRepository {
         status: 'solicitada',
         distanciaKm: data.distanciaKm ? String(data.distanciaKm) : null,
         valor: data.valor ? String(data.valor) : null,
+        formaPagamento: data.formaPagamento ?? null,
         solicitadaEm: new Date(),
       })
       .returning();

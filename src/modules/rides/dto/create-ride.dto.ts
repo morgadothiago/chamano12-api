@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsOptional, Min } from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsIn, Min } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateRideDto {
@@ -48,4 +48,9 @@ export class CreateRideDto {
   @IsNumber()
   @IsOptional()
   valor?: number;
+
+  @ApiProperty({ enum: ['dinheiro', 'cartao', 'pix'], required: false })
+  @IsIn(['dinheiro', 'cartao', 'pix'])
+  @IsOptional()
+  formaPagamento?: 'dinheiro' | 'cartao' | 'pix';
 }

@@ -6,6 +6,7 @@ import {
   ICreateRide,
   IRide,
   RideCanceladoPor,
+  RideFormaPagamento,
 } from './interfaces/ride.interface';
 
 function mapRideRow(row: {
@@ -23,6 +24,7 @@ function mapRideRow(row: {
   status: string;
   valor: string | null;
   distanciaKm: string | null;
+  formaPagamento: string | null;
   avaliacao: number | null;
   solicitadaEm: Date;
   aceitaEm: Date | null;
@@ -47,6 +49,7 @@ function mapRideRow(row: {
     status: row.status as IRide['status'],
     valor: row.valor ? Number(row.valor) : null,
     distanciaKm: row.distanciaKm ? Number(row.distanciaKm) : null,
+    formaPagamento: row.formaPagamento as RideFormaPagamento | null,
     avaliacao: row.avaliacao,
     solicitadaEm: row.solicitadaEm.toISOString(),
     aceitaEm: row.aceitaEm?.toISOString() ?? null,

@@ -1,5 +1,6 @@
 export type RideStatus = 'solicitada' | 'aceita' | 'iniciada' | 'finalizada' | 'cancelada';
 export type RideCanceladoPor = 'motorista' | 'passageiro' | 'sistema';
+export type RideFormaPagamento = 'dinheiro' | 'cartao' | 'pix';
 
 export interface ICreateRide {
   passengerId: string;
@@ -13,6 +14,7 @@ export interface ICreateRide {
   destinoLng: number;
   distanciaKm?: number;
   valor?: number;
+  formaPagamento?: RideFormaPagamento;
 }
 
 export interface IAcceptRide {
@@ -34,6 +36,7 @@ export interface IRide {
   status: RideStatus;
   valor: number | null;
   distanciaKm: number | null;
+  formaPagamento: RideFormaPagamento | null;
   avaliacao: number | null;
   solicitadaEm: string;
   aceitaEm: string | null;
@@ -73,4 +76,5 @@ export interface IRideRequestNotification {
   destinoLng: number;
   distanciaKm: number;
   valor: number;
+  formaPagamento: RideFormaPagamento;
 }

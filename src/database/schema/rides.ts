@@ -1,7 +1,7 @@
 import { numeric, pgTable, text, timestamp, integer } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { drivers } from './drivers';
-import { rideStatusEnum, rideCanceladoPorEnum } from './enums';
+import { rideStatusEnum, rideCanceladoPorEnum, rideFormaPagamentoEnum } from './enums';
 
 export const rides = pgTable('rides', {
   id: text('id')
@@ -33,6 +33,7 @@ export const rides = pgTable('rides', {
   // Valor
   valor: numeric('valor', { precision: 10, scale: 2 }),
   distanciaKm: numeric('distancia_km', { precision: 8, scale: 2 }),
+  formaPagamento: rideFormaPagamentoEnum('forma_pagamento'),
 
   // Avaliação (só após finalizada)
   avaliacao: integer('avaliacao'),
