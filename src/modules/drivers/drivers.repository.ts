@@ -207,7 +207,7 @@ export class DriversRepository {
         ganhos: sum(rides.valor),
       })
       .from(rides)
-      .where(eq(rides.driverId, driverId));
+      .where(and(eq(rides.driverId, driverId), eq(rides.status, 'finalizada')));
 
     return {
       corridas: row?.corridas ?? 0,
@@ -220,7 +220,7 @@ export class DriversRepository {
     driverId: string,
     params: { page: number; limit: number; from?: string; to?: string },
   ) {
-    const conditions = [eq(rides.driverId, driverId)];
+    const conditions = [eq(rides.driverId, driverId), eq(rides.status, 'finalizada')];
     if (params.from) {
       conditions.push(sql`${rides.solicitadaEm} >= ${params.from}`);
     }
