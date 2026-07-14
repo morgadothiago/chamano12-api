@@ -4,6 +4,10 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { AuthService } from '../auth.service';
 import { UsersRepository, IUserRecord } from '../users.repository';
+import { PasswordResetRepository } from '../password-reset.repository';
+import { MailService } from '../../../shared/mail/mail.service';
+import { DriversRepository } from '../../drivers/drivers.repository';
+import { SessionKickService } from '../../../shared/session-kick/session-kick.service';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -37,6 +41,13 @@ describe('AuthService', () => {
           },
         },
         { provide: JwtService, useValue: { signAsync: jest.fn() } },
+        {
+          provide: PasswordResetRepository,
+          useValue: { create: jest.fn(), findLatestActive: jest.fn(), incrementAttempts: jest.fn(), markConsumed: jest.fn() },
+        },
+        { provide: MailService, useValue: { sendPasswordResetCode: jest.fn() } },
+        { provide: DriversRepository, useValue: { findByUserId: jest.fn() } },
+        { provide: SessionKickService, useValue: { notifyNewSession: jest.fn(), onKick: jest.fn() } },
       ],
     }).compile();
 
@@ -58,6 +69,7 @@ describe('AuthService', () => {
         name: 'Admin',
         email: 'admin@example.com',
         role: 'admin',
+        phone: null,
       });
       expect(jwtService.signAsync).toHaveBeenCalledWith({
         sub: 'user-1',
@@ -94,6 +106,7 @@ describe('AuthService', () => {
         name: 'Admin',
         email: 'admin@example.com',
         role: 'admin',
+        phone: null,
       });
     });
 

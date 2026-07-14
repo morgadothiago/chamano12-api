@@ -23,9 +23,10 @@ import { Roles } from '../../shared/decorators/roles.decorator';
 import { CurrentUser } from '../../shared/decorators/current-user.decorator';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { DriverLocationStore } from '../../shared/location/driver-location.store';
+import { DriversRepository } from '../drivers/drivers.repository';
+import { AppException } from '../../shared/filters/app-exception';
 import { RidesService } from './rides.service';
 import { CreateRideDto } from './dto/create-ride.dto';
-import { AcceptRideDto } from './dto/accept-ride.dto';
 import { ListRidesQueryDto } from './dto/list-rides-query.dto';
 import { RideResponseDto } from './dto/ride-response.dto';
 
@@ -37,6 +38,7 @@ export class RidesController {
   constructor(
     private readonly ridesService: RidesService,
     private readonly locationStore: DriverLocationStore,
+    private readonly driversRepository: DriversRepository,
   ) {}
 
   @Get('nearby-drivers')
@@ -81,8 +83,22 @@ export class RidesController {
   @ApiParam({ name: 'id', description: 'ID da corrida' })
   @ApiResponse({ status: 200, description: 'Corrida aceita', type: RideResponseDto })
   @ApiResponse({ status: 400, description: 'Corrida não disponível' })
-  accept(@Param('id') id: string, @Body() dto: AcceptRideDto) {
-    return this.ridesService.acceptRide(id, dto.driverId);
+  @ApiResponse({ status: 403, description: 'Usuário autenticado não é um motorista' })
+  async accept(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    // O `driverId` NUNCA deve vir do body: `AcceptRideDto.driverId` permitia
+    // que qualquer usuário autenticado aceitasse uma corrida em nome de
+    // qualquer motorista (IDOR). O id do motorista é sempre resolvido a
+    // partir do usuário do JWT, igual ao fluxo equivalente via WebSocket
+    // (`driver:accept-ride` em ws-passenger.gateway.ts).
+    const driver = await this.driversRepository.findByUserId(user.sub);
+    if (!driver) {
+      throw new AppException(
+        'DRIVER_NOT_FOUND',
+        'Usuário autenticado não possui um perfil de motorista.',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+    return this.ridesService.acceptRide(id, driver.id);
   }
 
   @Post(':id/start')

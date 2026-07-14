@@ -79,6 +79,18 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect, O
         }
         client.user = payload;
         client.join(`user:${payload.sub}`);
+
+        // Sem isso, o motorista nunca reentra na sala `ride:${id}` quando o
+        // socket reconecta (comum no mobile: app em background, troca de
+        // rede) — ele fica online normalmente, mas para de receber chat da
+        // corrida em andamento porque só o passageiro tem esse "rejoin"
+        // automático (via passenger:get-active-ride a cada conexão).
+        const driverRecord = await this.driversRepository.findByUserId(payload.sub);
+        if (driverRecord) {
+          const activeRide = await this.ridesRepository.findActiveByDriver(driverRecord.id);
+          if (activeRide) client.join(`ride:${activeRide.id}`);
+        }
+
         this.logger.log(`Motorista conectado: ${payload.email}`);
         return;
       } catch {
@@ -151,11 +163,23 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect, O
     entry.lat = payload.lat;
     entry.lng = payload.lng;
     this.locationStore.set(user.sub, entry);
-    client.to(`ride:${user.sub}`).emit('ride:driver-location', {
-      driverId: user.sub,
-      lat: payload.lat,
-      lng: payload.lng,
-    });
+
+    // Busca o registro do motorista na tabela `drivers` para obter o
+    // `drivers.id` (que é o valor usado em `rides.driverId`), já que
+    // `user.sub` é o `users.id` (JWT sub).
+    const driverRecord = await this.driversRepository.findByUserId(user.sub);
+    if (!driverRecord) return;
+
+    // Busca a corrida ativa (aceita ou iniciada) para enviar a localização
+    // ao passageiro no room `passenger:${deviceId}`.
+    const activeRide = await this.ridesRepository.findActiveByDriver(driverRecord.id);
+    if (activeRide?.passengerId) {
+      this.server.to(`passenger:${activeRide.passengerId}`).emit('ride:driver-location', {
+        driverId: user.sub,
+        lat: payload.lat,
+        lng: payload.lng,
+      });
+    }
   }
 
   @SubscribeMessage('driver:go-offline')
@@ -183,6 +207,17 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect, O
       if (entry) entry.status = 'busy';
 
       client.join(`ride:${ride.id}`);
+
+      // Join the passenger to the ride room too, so chat messages work
+      // reliably without depending on user→driver ID mapping.
+      try {
+        const passengerSockets = await this.server.in(`passenger:${ride.passengerId}`).fetchSockets();
+        for (const s of passengerSockets) {
+          s.join(`ride:${ride.id}`);
+        }
+      } catch {
+        this.logger.warn(`Falha ao conectar passageiro à sala ride:${ride.id}`);
+      }
 
       this.server.to(`passenger:${ride.passengerId}`).emit('ride:accepted', {
         rideId: ride.id,
@@ -288,6 +323,7 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect, O
       origem: ride.origem,
       destino: ride.destino,
       valor: ride.valor ? Number(ride.valor) : 0,
+      distanciaKm: ride.distanciaKm ? Number(ride.distanciaKm) : null,
       formaPagamento: ride.formaPagamento,
     });
   }
@@ -383,12 +419,16 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect, O
       if (entry) entry.status = 'available';
     }
 
-    if (canceladoPor === 'passageiro') {
-      client.to(`user:${ride.driverId}`).emit('ride:cancelled', {
-        rideId: ride.id,
-        canceladoPor,
-        motivo: payload.motivo,
-      });
+    if (canceladoPor === 'passageiro' && ride.driverId) {
+      const driverRecord = await this.driversRepository.findById(ride.driverId);
+      const driverUserId = driverRecord?.userId;
+      if (driverUserId) {
+        client.to(`user:${driverUserId}`).emit('ride:cancelled', {
+          rideId: ride.id,
+          canceladoPor,
+          motivo: payload.motivo,
+        });
+      }
     } else {
       client.to(`passenger:${ride.passengerId}`).emit('ride:cancelled', {
         rideId: ride.id,
@@ -425,11 +465,11 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect, O
       enviadaEm: new Date().toISOString(),
     };
 
-    if (remetente === 'motorista' && ride.passengerId) {
-      this.server.to(`passenger:${ride.passengerId}`).emit('chat:new-message', mensagem);
-    } else if (remetente === 'passageiro' && ride.driverId) {
-      this.server.to(`user:${ride.driverId}`).emit('chat:new-message', mensagem);
-    }
+    // Usa a sala ride:${rideId} como canal único — tanto motorista quanto
+    // passageiro estão nela (motorista ao aceitar, passageiro na aceitação
+    // ou ao restaurar corrida ativa). Elimina a dependência do mapeamento
+    // driverId → userId que quebrava o chat passageiro→motorista.
+    client.to(`ride:${payload.rideId}`).emit('chat:new-message', mensagem);
 
     // Eco pro próprio remetente — a UI não precisa duplicar a mensagem localmente.
     client.emit('chat:new-message', mensagem);

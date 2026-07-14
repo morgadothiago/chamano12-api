@@ -107,6 +107,21 @@ export class RidesRepository {
    * restaurar o estado ao reabrir com uma corrida ativa em vez de cair na
    * tela de "pedir corrida" do zero.
    */
+  async findActiveByDriver(driverRecordId: string): Promise<RideRow | null> {
+    const rows = await this.db
+      .select()
+      .from(rides)
+      .where(
+        and(
+          eq(rides.driverId, driverRecordId),
+          inArray(rides.status, ['aceita', 'iniciada']),
+        ),
+      )
+      .orderBy(desc(rides.solicitadaEm))
+      .limit(1);
+    return rows[0] ?? null;
+  }
+
   async findActiveByPassenger(passengerId: string): Promise<RideRow | null> {
     const rows = await this.db
       .select()
