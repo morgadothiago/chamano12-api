@@ -9,12 +9,14 @@ import { UsersRepository } from './users.repository';
 import { PasswordResetRepository } from './password-reset.repository';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { MailModule } from '../../shared/mail/mail.module';
+import { DriversModule } from '../drivers/drivers.module';
 
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
     ConfigModule,
     MailModule,
+    DriversModule,
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 20 }]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
