@@ -26,8 +26,11 @@ export class PassengerResponseDto {
   @ApiPropertyOptional({ nullable: true })
   avatarUrl!: string | null;
 
-  @ApiProperty({ example: 'ativo', enum: ['ativo'] })
-  status!: 'ativo';
+  @ApiProperty({ example: 'ativo', enum: ['ativo', 'bloqueado', 'excluido'] })
+  status!: string;
+
+  @ApiProperty({ example: 0 })
+  saldoDevedor!: number;
 
   @ApiProperty({ example: 12 })
   totalCorridas!: number;

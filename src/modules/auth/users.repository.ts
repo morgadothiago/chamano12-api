@@ -12,6 +12,8 @@ export interface IUserRecord {
   role: string;
   phone: string | null;
   sessionVersion: number;
+  status: string;
+  saldoDevedor: string;
 }
 
 @Injectable()
@@ -69,5 +71,16 @@ export class UsersRepository {
       .where(eq(users.id, userId))
       .returning({ sessionVersion: users.sessionVersion });
     return row.sessionVersion;
+  }
+
+  /**
+   * Soma `valor` ao saldo devedor do passageiro — chamado quando o
+   * motorista finaliza uma corrida marcando "não pagou".
+   */
+  async incrementSaldoDevedor(userId: string, valor: number): Promise<void> {
+    await this.db
+      .update(users)
+      .set({ saldoDevedor: sql`${users.saldoDevedor} + ${valor}`, updatedAt: new Date() })
+      .where(eq(users.id, userId));
   }
 }

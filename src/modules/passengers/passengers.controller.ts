@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -23,6 +24,7 @@ import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { ListPassengersQueryDto } from './dto/list-passengers-query.dto';
 import { PassengerMeResponseDto } from './dto/passenger-me-response.dto';
 import { PassengerResponseDto } from './dto/passenger-response.dto';
+import { UpdatePassengerAdminDto } from './dto/update-passenger-admin.dto';
 import { UpdatePassengerProfileDto } from './dto/update-passenger-profile.dto';
 import { PassengersService } from './passengers.service';
 
@@ -89,5 +91,47 @@ export class PassengersController {
   @ApiResponse({ status: 404, description: 'Passageiro não encontrado' })
   findOne(@Param('id') id: string) {
     return this.passengersService.findById(id);
+  }
+
+  @Patch(':id')
+  @Roles('admin')
+  @ApiOperation({ summary: 'Edita dados de um passageiro (admin)' })
+  @ApiParam({ name: 'id', description: 'UUID do passageiro' })
+  @ApiResponse({ status: 200, description: 'Passageiro atualizado', type: PassengerResponseDto })
+  @ApiResponse({ status: 404, description: 'Passageiro não encontrado' })
+  update(@Param('id') id: string, @Body() dto: UpdatePassengerAdminDto) {
+    return this.passengersService.update(id, dto);
+  }
+
+  @Post(':id/block')
+  @Roles('admin')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Bloqueia o passageiro (impede login)' })
+  @ApiParam({ name: 'id', description: 'UUID do passageiro' })
+  @ApiResponse({ status: 200, description: 'Passageiro bloqueado', type: PassengerResponseDto })
+  @ApiResponse({ status: 404, description: 'Passageiro não encontrado' })
+  block(@Param('id') id: string) {
+    return this.passengersService.block(id);
+  }
+
+  @Post(':id/unblock')
+  @Roles('admin')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Desbloqueia o passageiro' })
+  @ApiParam({ name: 'id', description: 'UUID do passageiro' })
+  @ApiResponse({ status: 200, description: 'Passageiro desbloqueado', type: PassengerResponseDto })
+  @ApiResponse({ status: 404, description: 'Passageiro não encontrado' })
+  unblock(@Param('id') id: string) {
+    return this.passengersService.unblock(id);
+  }
+
+  @Delete(':id')
+  @Roles('admin')
+  @ApiOperation({ summary: 'Exclui o passageiro (soft delete — preserva o registro)' })
+  @ApiParam({ name: 'id', description: 'UUID do passageiro' })
+  @ApiResponse({ status: 200, description: 'Passageiro excluído', type: PassengerResponseDto })
+  @ApiResponse({ status: 404, description: 'Passageiro não encontrado' })
+  remove(@Param('id') id: string) {
+    return this.passengersService.remove(id);
   }
 }

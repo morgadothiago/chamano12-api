@@ -9,7 +9,8 @@ export type IPassenger = {
   email: string;
   telefone: string | null;
   avatarUrl: string | null;
-  status: 'ativo';
+  status: string;
+  saldoDevedor: number;
   totalCorridas: number;
   totalGasto: number;
   cadastroEm: string;
@@ -43,6 +44,8 @@ type PassengerRow = {
   email: string;
   phone: string | null;
   avatarUrl: string | null;
+  status: string;
+  saldoDevedor: string | null;
   enderecoCep: string | null;
   enderecoLogradouro: string | null;
   enderecoNumero: string | null;
@@ -96,7 +99,8 @@ export class PassengersService {
           email: row.email,
           telefone: row.phone,
           avatarUrl: row.avatarUrl,
-          status: 'ativo' as const,
+          status: row.status,
+          saldoDevedor: Number(row.saldoDevedor ?? 0),
           totalCorridas: metrics.totalCorridas,
           totalGasto: metrics.totalGasto,
           cadastroEm: row.createdAt.toISOString(),
@@ -123,13 +127,49 @@ export class PassengersService {
       email: row.email,
       telefone: row.phone,
       avatarUrl: row.avatarUrl,
-      status: 'ativo',
+      status: row.status,
+      saldoDevedor: Number(row.saldoDevedor ?? 0),
       totalCorridas: metrics.totalCorridas,
       totalGasto: metrics.totalGasto,
       cadastroEm: row.createdAt.toISOString(),
       ultimaCorrida: null,
       corridas: [],
     };
+  }
+
+  async update(
+    id: string,
+    data: { nome?: string; email?: string; telefone?: string },
+  ): Promise<IPassenger> {
+    const row = await this.passengersRepository.update(id, data);
+    if (!row) {
+      throw new NotFoundException({ code: 'PASSENGER_NOT_FOUND', message: 'Passageiro não encontrado.' });
+    }
+    return this.findById(id);
+  }
+
+  async block(id: string): Promise<IPassenger> {
+    const row = await this.passengersRepository.setStatus(id, 'bloqueado');
+    if (!row) {
+      throw new NotFoundException({ code: 'PASSENGER_NOT_FOUND', message: 'Passageiro não encontrado.' });
+    }
+    return this.findById(id);
+  }
+
+  async unblock(id: string): Promise<IPassenger> {
+    const row = await this.passengersRepository.setStatus(id, 'ativo');
+    if (!row) {
+      throw new NotFoundException({ code: 'PASSENGER_NOT_FOUND', message: 'Passageiro não encontrado.' });
+    }
+    return this.findById(id);
+  }
+
+  async remove(id: string): Promise<IPassenger> {
+    const row = await this.passengersRepository.setStatus(id, 'excluido');
+    if (!row) {
+      throw new NotFoundException({ code: 'PASSENGER_NOT_FOUND', message: 'Passageiro não encontrado.' });
+    }
+    return this.findById(id);
   }
 
   async findMe(userId: string): Promise<IPassengerMe> {

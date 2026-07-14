@@ -18,6 +18,8 @@ describe('AuthService', () => {
     role: 'admin',
     phone: null,
     sessionVersion: 0,
+    status: 'ativo',
+    saldoDevedor: '0',
   };
 
   beforeEach(async () => {

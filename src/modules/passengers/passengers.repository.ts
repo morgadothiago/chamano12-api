@@ -100,4 +100,27 @@ export class PassengersRepository {
   async updateAvatar(userId: string, avatarUrl: string) {
     await this.db.update(users).set({ avatarUrl, updatedAt: new Date() }).where(eq(users.id, userId));
   }
+
+  async update(id: string, data: { nome?: string; email?: string; telefone?: string }) {
+    const values: Partial<typeof users.$inferInsert> = { updatedAt: new Date() };
+    if (data.nome !== undefined) values.name = data.nome;
+    if (data.email !== undefined) values.email = data.email;
+    if (data.telefone !== undefined) values.phone = data.telefone;
+
+    const [row] = await this.db
+      .update(users)
+      .set(values)
+      .where(and(eq(users.id, id), eq(users.role, 'passenger')))
+      .returning();
+    return row ?? null;
+  }
+
+  async setStatus(id: string, status: string) {
+    const [row] = await this.db
+      .update(users)
+      .set({ status, updatedAt: new Date() })
+      .where(and(eq(users.id, id), eq(users.role, 'passenger')))
+      .returning();
+    return row ?? null;
+  }
 }

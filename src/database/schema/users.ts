@@ -1,4 +1,4 @@
-import { integer, pgTable, text, timestamp, varchar } from 'drizzle-orm/pg-core';
+import { integer, numeric, pgTable, text, timestamp, varchar } from 'drizzle-orm/pg-core';
 
 /**
  * Usuários administrativos do painel ops. Nesta fase só existe o papel
@@ -26,6 +26,13 @@ export const users = pgTable('users', {
   // valor atual em banco é de uma sessão anterior e é rejeitado — garante
   // no máximo 1 sessão ativa por conta (login novo derruba o anterior).
   sessionVersion: integer('session_version').notNull().default(0),
+  // "ativo" | "bloqueado" | "excluido" — só relevante pra role='passenger'
+  // (admin/driver têm seus próprios mecanismos de bloqueio/exclusão).
+  status: text('status').notNull().default('ativo'),
+  // Valor que o passageiro deve por corrida(s) marcada(s) como "não pago"
+  // pelo motorista — só registro, não bloqueia pedir corrida nova (decisão
+  // de produto: cobrança/bloqueio ficam pra uma fase futura).
+  saldoDevedor: numeric('saldo_devedor', { precision: 10, scale: 2 }).notNull().default('0'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

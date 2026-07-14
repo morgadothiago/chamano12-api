@@ -13,6 +13,7 @@ import { PasswordResetRepository } from './password-reset.repository';
 import { ILoginResult, IAuthUser } from './interfaces/auth.interface';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { MailService } from '../../shared/mail/mail.service';
+import { DriversRepository } from '../drivers/drivers.repository';
 
 const RESET_CODE_TTL_MS = 10 * 60 * 1000; // 10 minutos
 
@@ -23,6 +24,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly passwordResetRepository: PasswordResetRepository,
     private readonly mailService: MailService,
+    private readonly driversRepository: DriversRepository,
   ) {}
 
   async login(
@@ -50,6 +52,30 @@ export class AuthService {
       throw new ForbiddenException({
         code: 'NOT_A_DRIVER',
         message: 'Esta conta não é de motorista.',
+      });
+    }
+
+    if (user.role === 'driver') {
+      // "pendente" continua podendo logar de propósito — o app mostra a
+      // tela de "aguardando aprovação" com base no status do perfil, não no
+      // login em si. Só "inativo"/"rejeitado" (desativado ou excluído pelo
+      // admin) bloqueiam o acesso de verdade.
+      const driver = await this.driversRepository.findByUserId(user.id);
+      if (driver && (driver.status === 'inativo' || driver.status === 'rejeitado')) {
+        throw new ForbiddenException({
+          code: 'DRIVER_BLOCKED',
+          message: 'Sua conta de motorista está bloqueada. Entre em contato com o suporte.',
+        });
+      }
+    }
+
+    if (user.role === 'passenger' && user.status !== 'ativo') {
+      throw new ForbiddenException({
+        code: user.status === 'bloqueado' ? 'PASSENGER_BLOCKED' : 'PASSENGER_DELETED',
+        message:
+          user.status === 'bloqueado'
+            ? 'Sua conta está bloqueada. Entre em contato com o suporte.'
+            : 'Esta conta não está mais ativa.',
       });
     }
 
