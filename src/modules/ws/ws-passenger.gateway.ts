@@ -331,6 +331,43 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
+  // ── Chat (básico: sem persistência, só enquanto a corrida está ativa) ────
+
+  @SubscribeMessage('chat:send-message')
+  async handleChatMessage(client: AppSocket, payload: { rideId: string; texto: string }) {
+    const ride = await this.ridesRepository.findById(payload.rideId);
+    if (!ride) throw new WsException('Corrida não encontrada.');
+
+    let remetente: 'motorista' | 'passageiro';
+    let nomeRemetente: string;
+    if (client.user) {
+      remetente = 'motorista';
+      nomeRemetente = client.user.name;
+    } else if (client.passengerId) {
+      remetente = 'passageiro';
+      nomeRemetente = ride.passengerName;
+    } else {
+      throw new WsException('Não autorizado.');
+    }
+
+    const mensagem = {
+      rideId: payload.rideId,
+      texto: payload.texto,
+      remetente,
+      nomeRemetente,
+      enviadaEm: new Date().toISOString(),
+    };
+
+    if (remetente === 'motorista' && ride.passengerId) {
+      this.server.to(`passenger:${ride.passengerId}`).emit('chat:new-message', mensagem);
+    } else if (remetente === 'passageiro' && ride.driverId) {
+      this.server.to(`user:${ride.driverId}`).emit('chat:new-message', mensagem);
+    }
+
+    // Eco pro próprio remetente — a UI não precisa duplicar a mensagem localmente.
+    client.emit('chat:new-message', mensagem);
+  }
+
   // ── Helpers ──────────────────────────────────────────────────────────────
 
   private extractToken(client: Socket): string | null {
