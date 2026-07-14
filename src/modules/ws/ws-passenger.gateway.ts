@@ -212,18 +212,62 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const entry = this.locationStore.get(user.sub);
       if (entry) entry.status = 'available';
       client.leave(`ride:${ride.id}`);
-      this.server.to(`passenger:${ride.passengerId}`).emit('ride:completed', {
+      const payloadCompleted = {
         rideId: ride.id,
         status: 'finalizada',
         valor: ride.valor ?? 0,
         formaPagamento: ride.formaPagamento,
-      });
+      };
+      this.server.to(`passenger:${ride.passengerId}`).emit('ride:completed', payloadCompleted);
+      // O motorista também precisa do valor/forma pra mostrar no próprio
+      // resumo — antes só o passageiro recebia esse evento.
+      client.emit('ride:completed', payloadCompleted);
     } catch (e: any) {
       throw new WsException(e?.message ?? 'Erro ao finalizar corrida.');
     }
   }
 
   // ── Passageiro ─────────────────────────────────────────────────────────
+
+  /**
+   * Restaura a corrida em andamento ao reabrir o app (o passageiro é
+   * anônimo via deviceId, então isso é o único jeito de saber se ele já
+   * tinha uma corrida ativa). Responde null se não houver nenhuma.
+   */
+  @SubscribeMessage('passenger:get-active-ride')
+  async handleGetActiveRide(client: AppSocket) {
+    const passengerId = client.passengerId;
+    if (!passengerId) throw new WsException('Passageiro não identificado.');
+
+    const ride = await this.ridesRepository.findActiveByPassenger(passengerId);
+    if (!ride) {
+      client.emit('passenger:active-ride', null);
+      return;
+    }
+
+    let driverName = '';
+    let vehicle = '';
+    if (ride.driverId) {
+      const driver = await this.driversRepository.findById(ride.driverId);
+      if (driver) {
+        driverName = driver.nome;
+        vehicle = `${driver.veiculoModelo} ${driver.veiculoPlaca}`;
+      }
+      client.join(`ride:${ride.id}`);
+    }
+
+    client.emit('passenger:active-ride', {
+      rideId: ride.id,
+      status: ride.status === 'iniciada' ? 'started' : 'accepted',
+      driverId: ride.driverId,
+      driverName,
+      vehicle,
+      origem: ride.origem,
+      destino: ride.destino,
+      valor: ride.valor ? Number(ride.valor) : 0,
+      formaPagamento: ride.formaPagamento,
+    });
+  }
 
   @SubscribeMessage('passenger:request-ride')
   async handlePassengerRequestRide(

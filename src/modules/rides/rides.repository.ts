@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq, count, isNull, inArray, sql } from 'drizzle-orm';
+import { and, eq, count, isNull, inArray, sql, desc } from 'drizzle-orm';
 import { DRIZZLE, DrizzleDb } from '../../database/database.module';
 import { rides } from '../../database/schema';
 import type { RideRow } from '../../database/schema';
@@ -28,8 +28,8 @@ export class RidesRepository {
         destinoLat: String(data.destinoLat),
         destinoLng: String(data.destinoLng),
         status: 'solicitada',
-        distanciaKm: data.distanciaKm ? String(data.distanciaKm) : null,
-        valor: data.valor ? String(data.valor) : null,
+        distanciaKm: data.distanciaKm != null ? String(data.distanciaKm) : null,
+        valor: data.valor != null ? String(data.valor) : null,
         formaPagamento: data.formaPagamento ?? null,
         solicitadaEm: new Date(),
       })
@@ -98,6 +98,26 @@ export class RidesRepository {
           inArray(rides.status, ['solicitada', 'aceita']),
         ),
       )
+      .limit(1);
+    return rows[0] ?? null;
+  }
+
+  /**
+   * Corrida em andamento (aceita ou iniciada) do passageiro — usada pro app
+   * restaurar o estado ao reabrir com uma corrida ativa em vez de cair na
+   * tela de "pedir corrida" do zero.
+   */
+  async findActiveByPassenger(passengerId: string): Promise<RideRow | null> {
+    const rows = await this.db
+      .select()
+      .from(rides)
+      .where(
+        and(
+          eq(rides.passengerId, passengerId),
+          inArray(rides.status, ['aceita', 'iniciada']),
+        ),
+      )
+      .orderBy(desc(rides.solicitadaEm))
       .limit(1);
     return rows[0] ?? null;
   }
