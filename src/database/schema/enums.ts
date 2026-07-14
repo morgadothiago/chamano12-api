@@ -27,3 +27,5 @@ export const rideStatusEnum = pgEnum('ride_status', [
 export const rideCanceladoPorEnum = pgEnum('ride_cancelado_por', ['motorista', 'passageiro', 'sistema']);
 
 export const rideFormaPagamentoEnum = pgEnum('ride_forma_pagamento', ['dinheiro', 'cartao', 'pix']);
+
+export const couponTipoDescontoEnum = pgEnum('coupon_tipo_desconto', ['percentual', 'fixo']);

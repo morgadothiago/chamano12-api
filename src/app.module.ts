@@ -10,6 +10,7 @@ import { RidesModule } from './modules/rides/rides.module';
 import { WsModule } from './modules/ws/ws.module';
 import { PricingModule } from './modules/pricing/pricing.module';
 import { PassengersModule } from './modules/passengers/passengers.module';
+import { CouponsModule } from './modules/coupons/coupons.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { PassengersModule } from './modules/passengers/passengers.module';
     WsModule,
     PricingModule,
     PassengersModule,
+    CouponsModule,
   ],
 })
 export class AppModule {}
