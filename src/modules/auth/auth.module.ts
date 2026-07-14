@@ -9,6 +9,7 @@ import { UsersRepository } from './users.repository';
 import { PasswordResetRepository } from './password-reset.repository';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { MailModule } from '../../shared/mail/mail.module';
+import { SessionKickModule } from '../../shared/session-kick/session-kick.module';
 import { DriversModule } from '../drivers/drivers.module';
 
 @Module({
@@ -16,6 +17,7 @@ import { DriversModule } from '../drivers/drivers.module';
     PassportModule.register({ defaultStrategy: 'jwt' }),
     ConfigModule,
     MailModule,
+    SessionKickModule,
     DriversModule,
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 20 }]),
     JwtModule.registerAsync({

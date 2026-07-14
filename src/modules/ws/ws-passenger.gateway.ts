@@ -7,13 +7,14 @@ import {
   WsException,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { RidesService } from '../rides/rides.service';
 import { RidesRepository } from '../rides/rides.repository';
 import { DriversRepository } from '../drivers/drivers.repository';
 import { UsersRepository } from '../auth/users.repository';
 import { DriverLocationStore } from '../../shared/location/driver-location.store';
+import { SessionKickService } from '../../shared/session-kick/session-kick.service';
 
 /**
  * Gateway único /ws que aceita:
@@ -30,7 +31,7 @@ interface AppSocket extends Socket {
   cors: { origin: '*', credentials: true },
   namespace: '/ws',
 })
-export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect, OnModuleInit {
   private readonly logger = new Logger(WsAppGateway.name);
 
   @WebSocketServer()
@@ -43,7 +44,21 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly driversRepository: DriversRepository,
     private readonly usersRepository: UsersRepository,
     private readonly locationStore: DriverLocationStore,
+    private readonly sessionKickService: SessionKickService,
   ) {}
+
+  onModuleInit(): void {
+    // Login novo em outro aparelho derruba o socket antigo na hora — sem
+    // isso, a conta antiga continuava online/recebendo corridas até cair
+    // sozinha (fechar o app, perder rede etc.).
+    this.sessionKickService.onKick((userId) => {
+      this.server.to(`user:${userId}`).emit('error', {
+        code: 'SESSION_EXPIRED',
+        message: 'Sua sessão expirou porque a conta foi acessada em outro aparelho.',
+      });
+      this.server.in(`user:${userId}`).disconnectSockets(true);
+    });
+  }
 
   async handleConnection(client: AppSocket): Promise<void> {
     // Tenta autenticar como motorista (JWT)

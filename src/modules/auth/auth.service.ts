@@ -13,6 +13,7 @@ import { PasswordResetRepository } from './password-reset.repository';
 import { ILoginResult, IAuthUser } from './interfaces/auth.interface';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 import { MailService } from '../../shared/mail/mail.service';
+import { SessionKickService } from '../../shared/session-kick/session-kick.service';
 import { DriversRepository } from '../drivers/drivers.repository';
 
 const RESET_CODE_TTL_MS = 10 * 60 * 1000; // 10 minutos
@@ -25,6 +26,7 @@ export class AuthService {
     private readonly passwordResetRepository: PasswordResetRepository,
     private readonly mailService: MailService,
     private readonly driversRepository: DriversRepository,
+    private readonly sessionKickService: SessionKickService,
   ) {}
 
   async login(
@@ -170,6 +172,11 @@ export class AuthService {
     phone: string | null;
   }): Promise<ILoginResult> {
     const sessionVersion = await this.usersRepository.incrementSessionVersion(user.id);
+    // Derruba na hora qualquer socket já conectado com a sessão anterior —
+    // sem isso, o app antigo continuava recebendo corridas via WS até cair
+    // por conta própria (reconexão, app fechado etc.), mesmo com a regra de
+    // "1 sessão só" já bloqueando chamadas REST novas.
+    this.sessionKickService.notifyNewSession(user.id);
 
     const payload: JwtPayload = {
       sub: user.id,

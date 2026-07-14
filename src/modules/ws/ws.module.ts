@@ -5,12 +5,14 @@ import { WsAppGateway } from './ws-passenger.gateway';
 import { RidesModule } from '../rides/rides.module';
 import { DriversModule } from '../drivers/drivers.module';
 import { AuthModule } from '../auth/auth.module';
+import { SessionKickModule } from '../../shared/session-kick/session-kick.module';
 
 @Module({
   imports: [
     RidesModule,
     DriversModule,
     AuthModule,
+    SessionKickModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
