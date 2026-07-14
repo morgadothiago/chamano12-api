@@ -204,7 +204,7 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('driver:complete-ride')
   async handleDriverCompleteRide(
     client: AppSocket,
-    payload: { rideId: string },
+    payload: { rideId: string; pago?: boolean },
   ) {
     const user = this.requireDriver(client);
     try {
@@ -212,11 +212,19 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const entry = this.locationStore.get(user.sub);
       if (entry) entry.status = 'available';
       client.leave(`ride:${ride.id}`);
+
+      // "Não pagou" — só registra o valor no saldo devedor do passageiro,
+      // não bloqueia corrida nova (decisão de produto).
+      if (payload.pago === false && ride.passengerId && ride.valor) {
+        await this.usersRepository.incrementSaldoDevedor(ride.passengerId, ride.valor);
+      }
+
       const payloadCompleted = {
         rideId: ride.id,
         status: 'finalizada',
         valor: ride.valor ?? 0,
         formaPagamento: ride.formaPagamento,
+        pago: payload.pago !== false,
       };
       this.server.to(`passenger:${ride.passengerId}`).emit('ride:completed', payloadCompleted);
       // O motorista também precisa do valor/forma pra mostrar no próprio
