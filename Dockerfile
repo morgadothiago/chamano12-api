@@ -17,7 +17,7 @@ COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
 COPY --from=build /app/dist ./dist
-COPY --from=build /app/src/database/migrations ./src/database/migrations
+COPY --from=build /app/src/database ./src/database
 
 RUN mkdir -p uploads
 
