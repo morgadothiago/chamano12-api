@@ -1,0 +1,13 @@
+node_modules
+dist
+coverage
+uploads
+.git
+.env
+.env.local
+.env.production
+*.log
+.DS_Store
+test
+docs
+STATUS.md
