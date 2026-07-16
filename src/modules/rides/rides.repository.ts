@@ -95,7 +95,7 @@ export class RidesRepository {
       .where(
         and(
           eq(rides.passengerId, passengerId),
-          inArray(rides.status, ['solicitada', 'aceita']),
+          inArray(rides.status, ['solicitada', 'aceita', 'iniciada']),
         ),
       )
       .limit(1);

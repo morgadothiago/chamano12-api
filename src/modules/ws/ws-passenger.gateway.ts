@@ -88,7 +88,15 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect, O
         const driverRecord = await this.driversRepository.findByUserId(payload.sub);
         if (driverRecord) {
           const activeRide = await this.ridesRepository.findActiveByDriver(driverRecord.id);
-          if (activeRide) client.join(`ride:${activeRide.id}`);
+          if (activeRide) {
+            client.join(`ride:${activeRide.id}`);
+            // Sem isso, reconectar (background, troca de rede, restart do
+            // backend) sobrescrevia esse motorista como "available" no
+            // próximo driver:go-online, mesmo já estando em corrida —
+            // voltava a receber ride:new-request de outros passageiros.
+            const entry = this.locationStore.get(payload.sub);
+            if (entry) entry.status = 'busy';
+          }
         }
 
         this.logger.log(`Motorista conectado: ${payload.email}`);
@@ -200,6 +208,12 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect, O
     try {
       const driver = await this.driversRepository.findByUserId(user.sub);
       if (!driver) throw new WsException('Motorista não encontrado.');
+
+      // locationStore ('busy') é só cache em memória — se o processo reiniciar
+      // ou o estado se perder, essa checagem contra o banco impede aceitar
+      // duas corridas ao mesmo tempo.
+      const activeRide = await this.ridesRepository.findActiveByDriver(driver.id);
+      if (activeRide) throw new WsException('Você já tem uma corrida em andamento.');
 
       const ride = await this.ridesService.acceptRide(payload.rideId, driver.id);
 
