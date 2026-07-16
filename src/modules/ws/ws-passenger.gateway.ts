@@ -237,6 +237,7 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect, O
         rideId: ride.id,
         driverId: user.sub,
         driverName: user.name,
+        driverAvatarUrl: driver.avatarUrl,
         vehicle: entry?.vehicle ?? '',
         lat: entry?.lat ?? 0,
         lng: entry?.lng ?? 0,
@@ -318,12 +319,18 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect, O
     }
 
     let driverName = '';
+    let driverAvatarUrl: string | null = null;
     let vehicle = '';
+    let driverLat: number | null = null;
+    let driverLng: number | null = null;
     if (ride.driverId) {
       const driver = await this.driversRepository.findById(ride.driverId);
       if (driver) {
         driverName = driver.nome;
+        driverAvatarUrl = driver.avatarUrl;
         vehicle = `${driver.veiculoModelo} ${driver.veiculoPlaca}`;
+        driverLat = driver.localizacaoLat ? Number(driver.localizacaoLat) : null;
+        driverLng = driver.localizacaoLng ? Number(driver.localizacaoLng) : null;
       }
       client.join(`ride:${ride.id}`);
     }
@@ -333,9 +340,16 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect, O
       status: ride.status === 'iniciada' ? 'started' : 'accepted',
       driverId: ride.driverId,
       driverName,
+      driverAvatarUrl,
       vehicle,
+      lat: driverLat,
+      lng: driverLng,
       origem: ride.origem,
+      origemLat: Number(ride.origemLat),
+      origemLng: Number(ride.origemLng),
       destino: ride.destino,
+      destinoLat: Number(ride.destinoLat),
+      destinoLng: Number(ride.destinoLng),
       valor: ride.valor ? Number(ride.valor) : 0,
       distanciaKm: ride.distanciaKm ? Number(ride.distanciaKm) : null,
       formaPagamento: ride.formaPagamento,
@@ -429,9 +443,24 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect, O
     }
 
     if (ride!.driverId) {
-      const entry = this.locationStore.get(ride.driverId);
-      if (entry) entry.status = 'available';
+      // `ride.driverId` é o `drivers.id`, mas o locationStore é indexado
+      // por `users.id` (JWT sub) — sem essa conversão o driver nunca era
+      // liberado depois do cancelamento.
+      const driverRecord = await this.driversRepository.findById(ride.driverId);
+      if (driverRecord?.userId) {
+        const entry = this.locationStore.get(driverRecord.userId);
+        if (entry) entry.status = 'available';
+      }
     }
+
+    // Antes, quando o passageiro cancelava só notificava o motorista (sem
+    // emitir pro próprio passageiro) — o app do passageiro ficava travado
+    // num estado intermediário porque `handleCancelled` nunca disparava.
+    client.emit('ride:cancelled', {
+      rideId: ride.id,
+      canceladoPor,
+      motivo: payload.motivo,
+    });
 
     if (canceladoPor === 'passageiro' && ride.driverId) {
       const driverRecord = await this.driversRepository.findById(ride.driverId);
@@ -443,7 +472,8 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect, O
           motivo: payload.motivo,
         });
       }
-    } else {
+    } else if (ride.passengerId) {
+      // motorista ou sistema: notifica o passageiro
       client.to(`passenger:${ride.passengerId}`).emit('ride:cancelled', {
         rideId: ride.id,
         canceladoPor,
