@@ -85,6 +85,13 @@
       "when": 1783820000000,
       "tag": "0011_create_coupons",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1783830000000,
+      "tag": "0012_ride_lookup_indexes",
+      "breakpoints": true
     }
   ]
 }

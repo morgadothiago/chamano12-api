@@ -1,9 +1,11 @@
-import { numeric, pgTable, text, timestamp, integer } from 'drizzle-orm/pg-core';
+import { numeric, pgTable, text, timestamp, integer, index } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { drivers } from './drivers';
 import { rideStatusEnum, rideCanceladoPorEnum, rideFormaPagamentoEnum } from './enums';
 
-export const rides = pgTable('rides', {
+export const rides = pgTable(
+  'rides',
+  {
   id: text('id')
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
@@ -47,9 +49,15 @@ export const rides = pgTable('rides', {
   canceladoPor: rideCanceladoPorEnum('cancelado_por'),
   motivoCancelamento: text('motivo_cancelamento'),
 
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('rides_driver_id_status_idx').on(table.driverId, table.status),
+    index('rides_passenger_id_status_idx').on(table.passengerId, table.status),
+    index('rides_status_idx').on(table.status),
+  ],
+);
 
 export const ridesRelations = relations(rides, ({ one }) => ({
   driver: one(drivers, {
