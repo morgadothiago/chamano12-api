@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { WsAppGateway } from './ws-passenger.gateway';
@@ -9,7 +9,7 @@ import { SessionKickModule } from '../../shared/session-kick/session-kick.module
 
 @Module({
   imports: [
-    RidesModule,
+    forwardRef(() => RidesModule),
     DriversModule,
     AuthModule,
     SessionKickModule,
