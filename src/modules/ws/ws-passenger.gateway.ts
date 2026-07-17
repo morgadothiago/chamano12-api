@@ -187,6 +187,12 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect, O
     const driverRecord = await this.driversRepository.findByUserId(user.sub);
     if (!driverRecord) return;
 
+    // Persiste no banco pra `passenger:get-active-ride` conseguir restaurar
+    // a última posição conhecida do motorista depois que o passageiro
+    // recarrega o app — sem isso a rota some após reload (só existia em
+    // memória no `locationStore`, que o restore não lê).
+    await this.driversRepository.updateLocation(driverRecord.id, payload.lat, payload.lng);
+
     // Busca a corrida ativa (aceita ou iniciada) para enviar a localização
     // ao passageiro no room `passenger:${deviceId}`.
     const activeRide = await this.ridesRepository.findActiveByDriver(driverRecord.id);

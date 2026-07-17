@@ -139,6 +139,13 @@ export class DriversRepository {
     return driver ?? null;
   }
 
+  async updateLocation(id: string, lat: number, lng: number): Promise<void> {
+    await this.db
+      .update(drivers)
+      .set({ localizacaoLat: String(lat), localizacaoLng: String(lng) })
+      .where(eq(drivers.id, id));
+  }
+
   async updateAvatarUrl(id: string, avatarUrl: string): Promise<DriverRow | null> {
     const [driver] = await this.db
       .update(drivers)
