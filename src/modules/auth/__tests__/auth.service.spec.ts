@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { AuthService } from '../auth.service';
@@ -92,6 +92,31 @@ describe('AuthService', () => {
       await expect(service.login('admin@example.com', 'wrong-password')).rejects.toThrow(
         UnauthorizedException,
       );
+    });
+
+    it('rejects deviceType=passageiro when the account is not a passenger', async () => {
+      usersRepository.findByEmail.mockResolvedValue(fakeUser); // role: 'admin'
+
+      await expect(
+        service.login('admin@example.com', 'admin123', 'passageiro'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('rejects deviceType=motorista when the account is not a driver', async () => {
+      usersRepository.findByEmail.mockResolvedValue(fakeUser); // role: 'admin'
+
+      await expect(
+        service.login('admin@example.com', 'admin123', 'motorista'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('allows deviceType=passageiro when the account is a passenger', async () => {
+      usersRepository.findByEmail.mockResolvedValue({ ...fakeUser, role: 'passenger' });
+      jwtService.signAsync.mockResolvedValue('signed-jwt-token');
+
+      const result = await service.login('admin@example.com', 'admin123', 'passageiro');
+
+      expect(result.token).toBe('signed-jwt-token');
     });
   });
 

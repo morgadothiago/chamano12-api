@@ -57,6 +57,13 @@ export class AuthService {
       });
     }
 
+    if (deviceType === 'passageiro' && user.role !== 'passenger') {
+      throw new ForbiddenException({
+        code: 'NOT_A_PASSENGER',
+        message: 'Esta conta não é de passageiro.',
+      });
+    }
+
     if (user.role === 'driver') {
       // "pendente" continua podendo logar de propósito — o app mostra a
       // tela de "aguardando aprovação" com base no status do perfil, não no
