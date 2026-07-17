@@ -80,6 +80,15 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect, O
         client.user = payload;
         client.join(`user:${payload.sub}`);
 
+        // Painel admin: sala separada pra broadcast de eventos de corrida
+        // em tempo real (ver `admin:ride-event`), sem tocar nas salas de
+        // motorista/passageiro.
+        if (payload.role === 'admin') {
+          client.join('admin');
+          this.logger.log(`Admin conectado: ${payload.email}`);
+          return;
+        }
+
         // Sem isso, o motorista nunca reentra na sala `ride:${id}` quando o
         // socket reconecta (comum no mobile: app em background, troca de
         // rede) — ele fica online normalmente, mas para de receber chat da
@@ -242,6 +251,7 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect, O
         lat: entry?.lat ?? 0,
         lng: entry?.lng ?? 0,
       });
+      this.server.to('admin').emit('admin:ride-event', { type: 'accepted', rideId: ride.id });
 
       this.logger.log(`Corrida ${ride.id} aceita por ${user.name}`);
     } catch (e: any) {
@@ -261,6 +271,7 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect, O
         rideId: ride.id,
         status: 'iniciada',
       });
+      this.server.to('admin').emit('admin:ride-event', { type: 'started', rideId: ride.id });
     } catch (e: any) {
       throw new WsException(e?.message ?? 'Erro ao iniciar corrida.');
     }
@@ -295,6 +306,7 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect, O
       // O motorista também precisa do valor/forma pra mostrar no próprio
       // resumo — antes só o passageiro recebia esse evento.
       client.emit('ride:completed', payloadCompleted);
+      this.server.to('admin').emit('admin:ride-event', { type: 'completed', rideId: ride.id });
     } catch (e: any) {
       throw new WsException(e?.message ?? 'Erro ao finalizar corrida.');
     }
@@ -389,6 +401,8 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect, O
       formaPagamento: payload.formaPagamento,
     });
 
+    this.server.to('admin').emit('admin:ride-event', { type: 'new-request', rideId: ride.id });
+
     const nearby = this.locationStore.findNearby(payload.origemLat, payload.origemLng, 5);
 
     if (nearby.length === 0) {
@@ -461,6 +475,7 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect, O
       canceladoPor,
       motivo: payload.motivo,
     });
+    this.server.to('admin').emit('admin:ride-event', { type: 'cancelled', rideId: ride.id });
 
     if (canceladoPor === 'passageiro' && ride.driverId) {
       const driverRecord = await this.driversRepository.findById(ride.driverId);
@@ -517,6 +532,12 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect, O
 
     // Eco pro próprio remetente — a UI não precisa duplicar a mensagem localmente.
     client.emit('chat:new-message', mensagem);
+  }
+
+  // Método público para o RidesController emitir eventos de admin quando
+  // o painel web completa/cancela via REST (sem depender de socket do admin).
+  emitAdminEvent(type: string, rideId: string): void {
+    this.server.to('admin').emit('admin:ride-event', { type, rideId });
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────

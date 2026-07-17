@@ -23,5 +23,6 @@ import { SessionKickModule } from '../../shared/session-kick/session-kick.module
     }),
   ],
   providers: [WsAppGateway],
+  exports: [WsAppGateway],
 })
 export class WsModule {}

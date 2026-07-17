@@ -4,10 +4,12 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Inject,
   Param,
   Post,
   Query,
   UseGuards,
+  forwardRef,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -29,6 +31,7 @@ import { RidesService } from './rides.service';
 import { CreateRideDto } from './dto/create-ride.dto';
 import { ListRidesQueryDto } from './dto/list-rides-query.dto';
 import { RideResponseDto } from './dto/ride-response.dto';
+import { WsAppGateway } from '../ws/ws-passenger.gateway';
 
 @ApiTags('rides')
 @ApiBearerAuth()
@@ -39,6 +42,8 @@ export class RidesController {
     private readonly ridesService: RidesService,
     private readonly locationStore: DriverLocationStore,
     private readonly driversRepository: DriversRepository,
+    @Inject(forwardRef(() => WsAppGateway))
+    private readonly wsGateway: WsAppGateway,
   ) {}
 
   @Get('nearby-drivers')
@@ -115,8 +120,10 @@ export class RidesController {
   @ApiOperation({ summary: 'Motorista finaliza a corrida' })
   @ApiParam({ name: 'id', description: 'ID da corrida' })
   @ApiResponse({ status: 200, description: 'Corrida finalizada', type: RideResponseDto })
-  complete(@Param('id') id: string) {
-    return this.ridesService.completeRide(id);
+  async complete(@Param('id') id: string) {
+    const ride = await this.ridesService.completeRide(id);
+    this.wsGateway.emitAdminEvent('completed', id);
+    return ride;
   }
 
   @Post(':id/cancel')
@@ -124,11 +131,13 @@ export class RidesController {
   @ApiOperation({ summary: 'Cancela uma corrida (motorista, passageiro ou sistema)' })
   @ApiParam({ name: 'id', description: 'ID da corrida' })
   @ApiResponse({ status: 200, description: 'Corrida cancelada', type: RideResponseDto })
-  cancel(
+  async cancel(
     @Param('id') id: string,
     @Body() body: { canceladoPor: 'motorista' | 'passageiro' | 'sistema'; motivo?: string },
   ) {
-    return this.ridesService.cancelRide(id, body.canceladoPor, body.motivo);
+    const ride = await this.ridesService.cancelRide(id, body.canceladoPor, body.motivo);
+    this.wsGateway.emitAdminEvent('cancelled', id);
+    return ride;
   }
 
   @Get(':id')
