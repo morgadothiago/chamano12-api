@@ -318,6 +318,48 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect, O
     }
   }
 
+  /**
+   * Restaura a corrida em andamento ao reabrir/recarregar o app do
+   * motorista — sem isso a corrida sumia da tela no reload mesmo
+   * continuando ativa no banco (só o passageiro tinha esse restore).
+   */
+  @SubscribeMessage('driver:get-active-ride')
+  async handleDriverGetActiveRide(client: AppSocket) {
+    const user = this.requireDriver(client);
+    const driverRecord = await this.driversRepository.findByUserId(user.sub);
+    if (!driverRecord) {
+      client.emit('driver:active-ride', null);
+      return;
+    }
+
+    const ride = await this.ridesRepository.findActiveByDriver(driverRecord.id);
+    if (!ride) {
+      client.emit('driver:active-ride', null);
+      return;
+    }
+
+    const passengerAvatarUrl = ride.passengerId
+      ? await this.ridesRepository.findPassengerAvatarUrl(ride.passengerId)
+      : null;
+
+    client.join(`ride:${ride.id}`);
+
+    client.emit('driver:active-ride', {
+      rideId: ride.id,
+      status: ride.status === 'iniciada' ? 'started' : 'accepted',
+      passengerName: ride.passengerName,
+      passengerAvatarUrl,
+      origem: ride.origem,
+      origemLat: Number(ride.origemLat),
+      origemLng: Number(ride.origemLng),
+      destino: ride.destino,
+      destinoLat: Number(ride.destinoLat),
+      destinoLng: Number(ride.destinoLng),
+      valor: ride.valor ? Number(ride.valor) : 0,
+      formaPagamento: ride.formaPagamento ?? 'dinheiro',
+    });
+  }
+
   // ── Passageiro ─────────────────────────────────────────────────────────
 
   /**
