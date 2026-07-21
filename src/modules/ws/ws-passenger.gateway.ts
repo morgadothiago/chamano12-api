@@ -89,6 +89,18 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect, O
           return;
         }
 
+        // Passageiro logado (JWT) — usa o `users.id` real como identidade,
+        // em vez do deviceId anônimo. Sem isso, `rides.passengerId` nunca
+        // batia com `users.id`, e coisas como a foto de perfil do
+        // passageiro nunca chegavam pro motorista mesmo pra quem tinha
+        // conta com avatar cadastrado.
+        if (payload.role === 'passenger') {
+          client.passengerId = payload.sub;
+          client.join(`passenger:${payload.sub}`);
+          this.logger.log(`Passageiro conectado (logado): ${payload.email}`);
+          return;
+        }
+
         // Sem isso, o motorista nunca reentra na sala `ride:${id}` quando o
         // socket reconecta (comum no mobile: app em background, troca de
         // rede) — ele fica online normalmente, mas para de receber chat da
