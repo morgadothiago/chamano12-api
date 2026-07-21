@@ -115,8 +115,28 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect, O
             // backend) sobrescrevia esse motorista como "available" no
             // próximo driver:go-online, mesmo já estando em corrida —
             // voltava a receber ride:new-request de outros passageiros.
+            //
+            // Se a entrada nem existir mais (socket caiu de vez em algum
+            // momento — app em background, rede instável — e o GPS falhou
+            // bem na hora da reconexão automática do client), reconstrói
+            // ela aqui a partir da última localização salva no banco. Sem
+            // isso o motorista "sumia" pro dispatcher pra sempre: mesmo o
+            // botão mostrando Online, `driver:complete-ride` não achava
+            // nada pra marcar como `available` de novo (`if (entry)` virava
+            // no-op), e só um toggle manual (offline -> online) resolvia.
             const entry = this.locationStore.get(payload.sub);
-            if (entry) entry.status = 'busy';
+            if (entry) {
+              entry.status = 'busy';
+            } else if (driverRecord.localizacaoLat && driverRecord.localizacaoLng) {
+              this.locationStore.set(payload.sub, {
+                driverId: payload.sub,
+                driverName: driverRecord.nome,
+                vehicle: `${driverRecord.veiculoModelo} ${driverRecord.veiculoPlaca}`,
+                lat: Number(driverRecord.localizacaoLat),
+                lng: Number(driverRecord.localizacaoLng),
+                status: 'busy',
+              });
+            }
           }
         }
 
