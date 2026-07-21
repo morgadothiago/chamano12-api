@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq, ilike, sql, count, avg, sum } from 'drizzle-orm';
+import { and, eq, ilike, sql, count, avg, sum, desc } from 'drizzle-orm';
 import { DRIZZLE, DrizzleDb } from '../../database/database.module';
 import { driverDocuments, drivers, rides } from '../../database/schema';
 import type { DriverDocumentRow, DriverRow } from '../../database/schema';
@@ -241,7 +241,7 @@ export class DriversRepository {
         .select()
         .from(rides)
         .where(where)
-        .orderBy(rides.solicitadaEm)
+        .orderBy(desc(rides.solicitadaEm))
         .limit(params.limit)
         .offset((params.page - 1) * params.limit),
       this.db.select({ value: count() }).from(rides).where(where),

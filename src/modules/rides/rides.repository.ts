@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, eq, count, isNull, inArray, sql, desc } from 'drizzle-orm';
 import { DRIZZLE, DrizzleDb } from '../../database/database.module';
-import { rides } from '../../database/schema';
+import { rides, users } from '../../database/schema';
 import type { RideRow } from '../../database/schema';
 import { ICreateRide, RideStatus, RideCanceladoPor } from './interfaces/ride.interface';
 
@@ -12,6 +12,15 @@ export class RidesRepository {
   async findById(id: string): Promise<RideRow | null> {
     const rows = await this.db.select().from(rides).where(eq(rides.id, id)).limit(1);
     return rows[0] ?? null;
+  }
+
+  async findPassengerAvatarUrl(passengerId: string): Promise<string | null> {
+    const rows = await this.db
+      .select({ avatarUrl: users.avatarUrl })
+      .from(users)
+      .where(eq(users.id, passengerId))
+      .limit(1);
+    return rows[0]?.avatarUrl ?? null;
   }
 
   async createRideRequest(data: ICreateRide): Promise<RideRow> {
@@ -156,7 +165,7 @@ export class RidesRepository {
         .select()
         .from(rides)
         .where(where)
-        .orderBy(rides.solicitadaEm)
+        .orderBy(desc(rides.solicitadaEm))
         .limit(params.limit)
         .offset((params.page - 1) * params.limit),
       this.db.select({ value: count() }).from(rides).where(where),

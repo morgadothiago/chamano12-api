@@ -6,6 +6,7 @@ export class RideResponseDto {
   @ApiProperty() passengerId!: string | null;
   @ApiProperty() passengerName!: string;
   @ApiProperty() passengerPhone!: string | null;
+  @ApiProperty() passengerAvatarUrl!: string | null;
   @ApiProperty() origem!: string;
   @ApiProperty() origemLat!: number;
   @ApiProperty() origemLng!: number;

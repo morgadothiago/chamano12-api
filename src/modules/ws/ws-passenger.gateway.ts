@@ -416,10 +416,13 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect, O
       return;
     }
 
+    const passengerAvatarUrl = await this.ridesRepository.findPassengerAvatarUrl(passengerId);
+
     for (const driver of nearby) {
       client.to(`user:${driver.driverId}`).emit('ride:new-request', {
         rideId: ride.id,
         passengerName: payload.passengerName,
+        passengerAvatarUrl,
         origem: payload.origem,
         origemLat: payload.origemLat,
         origemLng: payload.origemLng,

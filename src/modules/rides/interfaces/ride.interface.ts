@@ -27,6 +27,7 @@ export interface IRide {
   passengerId: string | null;
   passengerName: string;
   passengerPhone: string | null;
+  passengerAvatarUrl: string | null;
   origem: string;
   origemLat: number;
   origemLng: number;

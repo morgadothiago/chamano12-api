@@ -9,7 +9,8 @@ import {
   RideFormaPagamento,
 } from './interfaces/ride.interface';
 
-function mapRideRow(row: {
+function mapRideRow(
+  row: {
   id: string;
   driverId: string | null;
   passengerId: string | null;
@@ -33,13 +34,16 @@ function mapRideRow(row: {
   canceladaEm: Date | null;
   canceladoPor: string | null;
   motivoCancelamento: string | null;
-}): IRide {
+  },
+  passengerAvatarUrl: string | null = null,
+): IRide {
   return {
     id: row.id,
     driverId: row.driverId,
     passengerId: row.passengerId,
     passengerName: row.passengerName,
     passengerPhone: row.passengerPhone,
+    passengerAvatarUrl,
     origem: row.origem,
     origemLat: Number(row.origemLat),
     origemLng: Number(row.origemLng),
@@ -68,7 +72,10 @@ export class RidesService {
   async findById(id: string): Promise<IRide> {
     const row = await this.ridesRepository.findById(id);
     if (!row) throw this.notFound();
-    return mapRideRow(row);
+    const avatarUrl = row.passengerId
+      ? await this.ridesRepository.findPassengerAvatarUrl(row.passengerId)
+      : null;
+    return mapRideRow(row, avatarUrl);
   }
 
   async createRideRequest(data: ICreateRide): Promise<IRide> {
@@ -148,7 +155,7 @@ export class RidesService {
   }): Promise<PaginatedResult<IRide>> {
     const { rows, total } = await this.ridesRepository.findMany(params);
     return {
-      items: rows.map(mapRideRow),
+      items: rows.map((row) => mapRideRow(row)),
       meta: { page: params.page, total, limit: params.limit },
     };
   }
