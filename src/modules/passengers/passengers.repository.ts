@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, count, eq, ilike, or, sum } from 'drizzle-orm';
+import { and, count, desc, eq, ilike, or, sum } from 'drizzle-orm';
 import { DRIZZLE, DrizzleDb } from '../../database/database.module';
 import { rides, users } from '../../database/schema';
 
@@ -48,14 +48,28 @@ export class PassengersRepository {
   }
 
   /**
-   * Corridas ligadas a este passageiro via `rides.passengerId`. Hoje o app
-   * do passageiro pede corrida de forma anônima (deviceId no WebSocket),
-   * então `passengerId` normalmente não bate com o `users.id` de uma conta
-   * autenticada — o total tende a ficar zerado até essa ligação ser feita
-   * no fluxo de solicitação de corrida (fora do escopo desta tarefa).
+   * Histórico paginado de corridas finalizadas do passageiro. `rides.passengerId`
+   * só bate com `users.id` quando o passageiro está logado (JWT) no WebSocket
+   * — ver `ws-passenger.gateway.ts` `handleConnection`.
    */
-  async findTrips(passengerId: string) {
-    return this.db.select().from(rides).where(eq(rides.passengerId, passengerId));
+  async findTrips(
+    passengerId: string,
+    params: { page: number; limit: number },
+  ) {
+    const where = and(eq(rides.passengerId, passengerId), eq(rides.status, 'finalizada'));
+
+    const [rows, totalRows] = await Promise.all([
+      this.db
+        .select()
+        .from(rides)
+        .where(where)
+        .orderBy(desc(rides.solicitadaEm))
+        .limit(params.limit)
+        .offset((params.page - 1) * params.limit),
+      this.db.select({ value: count() }).from(rides).where(where),
+    ]);
+
+    return { rows, total: totalRows[0]?.value ?? 0 };
   }
 
   async getMetrics(passengerId: string) {

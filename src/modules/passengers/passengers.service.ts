@@ -28,6 +28,15 @@ export type IPassengerAddress = {
   uf: string;
 };
 
+export type IPassengerTrip = {
+  id: string;
+  data: string;
+  origem: string;
+  destino: string;
+  valor: number;
+  avaliacao: number;
+};
+
 export type IPassengerMe = {
   id: string;
   nome: string;
@@ -218,5 +227,23 @@ export class PassengersService {
 
     await this.passengersRepository.updateAvatar(userId, stored.url);
     return this.findMe(userId);
+  }
+
+  async listTrips(
+    userId: string,
+    params: { page: number; limit: number },
+  ): Promise<PaginatedResult<IPassengerTrip>> {
+    const { rows, total } = await this.passengersRepository.findTrips(userId, params);
+
+    const items: IPassengerTrip[] = rows.map((row) => ({
+      id: row.id,
+      data: row.solicitadaEm.toISOString(),
+      origem: row.origem,
+      destino: row.destino,
+      valor: Number(row.valor ?? 0),
+      avaliacao: row.avaliacao ?? 0,
+    }));
+
+    return { items, meta: { page: params.page, total, limit: params.limit } };
   }
 }

@@ -22,8 +22,10 @@ import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { ListPassengersQueryDto } from './dto/list-passengers-query.dto';
+import { ListTripsQueryDto } from './dto/list-trips-query.dto';
 import { PassengerMeResponseDto } from './dto/passenger-me-response.dto';
 import { PassengerResponseDto } from './dto/passenger-response.dto';
+import { TripResponseDto } from './dto/trip-response.dto';
 import { UpdatePassengerAdminDto } from './dto/update-passenger-admin.dto';
 import { UpdatePassengerProfileDto } from './dto/update-passenger-profile.dto';
 import { PassengersService } from './passengers.service';
@@ -81,6 +83,17 @@ export class PassengersController {
       );
     }
     return this.passengersService.updateAvatar(user.sub, file);
+  }
+
+  @Get('me/trips')
+  @ApiOperation({ summary: 'Histórico de corridas finalizadas do passageiro autenticado (paginado)' })
+  @ApiResponse({ status: 200, description: 'Lista paginada de corridas', type: [TripResponseDto] })
+  @ApiResponse({ status: 401, description: 'Token ausente ou inválido' })
+  listMyTrips(@CurrentUser() user: JwtPayload, @Query() query: ListTripsQueryDto) {
+    return this.passengersService.listTrips(user.sub, {
+      page: query.page ?? 1,
+      limit: query.limit ?? 20,
+    });
   }
 
   @Get(':id')

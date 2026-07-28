@@ -91,7 +91,10 @@ export class RidesService {
     }
 
     const row = await this.ridesRepository.createRideRequest(data);
-    return mapRideRow(row);
+    const avatarUrl = row.passengerId
+      ? await this.ridesRepository.findPassengerAvatarUrl(row.passengerId)
+      : null;
+    return mapRideRow(row, avatarUrl);
   }
 
   async acceptRide(id: string, driverId: string): Promise<IRide> {
@@ -103,7 +106,10 @@ export class RidesService {
         HttpStatus.BAD_REQUEST,
       );
     }
-    return mapRideRow(row);
+    const avatarUrl = row.passengerId
+      ? await this.ridesRepository.findPassengerAvatarUrl(row.passengerId)
+      : null;
+    return mapRideRow(row, avatarUrl);
   }
 
   async startRide(id: string): Promise<IRide> {
@@ -115,7 +121,10 @@ export class RidesService {
         HttpStatus.BAD_REQUEST,
       );
     }
-    return mapRideRow(row);
+    const avatarUrl = row.passengerId
+      ? await this.ridesRepository.findPassengerAvatarUrl(row.passengerId)
+      : null;
+    return mapRideRow(row, avatarUrl);
   }
 
   async completeRide(id: string): Promise<IRide> {
@@ -127,7 +136,10 @@ export class RidesService {
         HttpStatus.BAD_REQUEST,
       );
     }
-    return mapRideRow(row);
+    const avatarUrl = row.passengerId
+      ? await this.ridesRepository.findPassengerAvatarUrl(row.passengerId)
+      : null;
+    return mapRideRow(row, avatarUrl);
   }
 
   async cancelRide(
