@@ -114,9 +114,11 @@ export class DriversRepository {
     }
     if (data.endereco !== undefined) {
       if (data.endereco.cep !== undefined) values.enderecoCep = data.endereco.cep;
-      if (data.endereco.logradouro !== undefined) values.enderecoLogradouro = data.endereco.logradouro;
+      if (data.endereco.logradouro !== undefined)
+        values.enderecoLogradouro = data.endereco.logradouro;
       if (data.endereco.numero !== undefined) values.enderecoNumero = data.endereco.numero;
-      if (data.endereco.complemento !== undefined) values.enderecoComplemento = data.endereco.complemento;
+      if (data.endereco.complemento !== undefined)
+        values.enderecoComplemento = data.endereco.complemento;
       if (data.endereco.bairro !== undefined) values.enderecoBairro = data.endereco.bairro;
       if (data.endereco.cidade !== undefined) values.enderecoCidade = data.endereco.cidade;
       if (data.endereco.uf !== undefined) values.enderecoUf = data.endereco.uf;
@@ -246,6 +248,41 @@ export class DriversRepository {
         .from(rides)
         .where(where)
         .orderBy(desc(rides.solicitadaEm))
+        .limit(params.limit)
+        .offset((params.page - 1) * params.limit),
+      this.db.select({ value: count() }).from(rides).where(where),
+    ]);
+
+    return { rows, total: totalRows[0]?.value ?? 0 };
+  }
+
+  /**
+   * Avaliações recebidas pelo motorista: apenas corridas finalizadas que
+   * possuem avaliação (avaliacao IS NOT NULL), ordenadas da mais recente
+   * para a mais antiga. Inclui origem/destino/valor para contexto na lista.
+   */
+  async findRatings(driverId: string, params: { page: number; limit: number }) {
+    const where = and(
+      eq(rides.driverId, driverId),
+      eq(rides.status, 'finalizada'),
+      sql`${rides.avaliacao} IS NOT NULL`,
+    );
+
+    const [rows, totalRows] = await Promise.all([
+      this.db
+        .select({
+          id: rides.id,
+          avaliacao: rides.avaliacao,
+          avaliacaoTags: rides.avaliacaoTags,
+          origem: rides.origem,
+          destino: rides.destino,
+          valor: rides.valor,
+          finalizadaEm: rides.finalizadaEm,
+          passengerName: rides.passengerName,
+        })
+        .from(rides)
+        .where(where)
+        .orderBy(desc(rides.finalizadaEm))
         .limit(params.limit)
         .offset((params.page - 1) * params.limit),
       this.db.select({ value: count() }).from(rides).where(where),

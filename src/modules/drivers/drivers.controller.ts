@@ -37,6 +37,7 @@ import { RejectDriverDto } from './dto/reject-driver.dto';
 import { ReviewDocumentDto } from './dto/review-document.dto';
 import { DriverResponseDto } from './dto/driver-response.dto';
 import { TripResponseDto } from './dto/trip-response.dto';
+import { RatingResponseDto } from './dto/rating-response.dto';
 import { DocumentTipo } from './interfaces/driver.interface';
 
 const VALID_DOCUMENT_TIPOS: DocumentTipo[] = ['cnh', 'crlv', 'foto_veiculo'];
@@ -84,11 +85,18 @@ export class DriversController {
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
-  @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } })
-  @ApiOperation({ summary: 'Troca a foto de perfil do motorista autenticado (multipart/form-data)' })
+  @ApiBody({
+    schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } },
+  })
+  @ApiOperation({
+    summary: 'Troca a foto de perfil do motorista autenticado (multipart/form-data)',
+  })
   @ApiResponse({ status: 200, description: 'Avatar atualizado', type: DriverResponseDto })
   @ApiResponse({ status: 400, description: 'Arquivo ausente' })
-  uploadAvatar(@CurrentUser() user: JwtPayload, @UploadedFile() file: Express.Multer.File | undefined) {
+  uploadAvatar(
+    @CurrentUser() user: JwtPayload,
+    @UploadedFile() file: Express.Multer.File | undefined,
+  ) {
     if (!file) {
       throw new AppException(
         'FILE_REQUIRED',
@@ -240,6 +248,22 @@ export class DriversController {
       limit: query.limit ?? 20,
       from: query.from,
       to: query.to,
+    });
+  }
+
+  @Get(':id/ratings')
+  @ApiOperation({ summary: 'Avaliações recebidas pelo motorista (paginado)' })
+  @ApiParam({ name: 'id', description: 'UUID do motorista' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista paginada de avaliações',
+    type: [RatingResponseDto],
+  })
+  @ApiResponse({ status: 404, description: 'Motorista não encontrado' })
+  listRatings(@Param('id') id: string, @Query() query: ListTripsQueryDto) {
+    return this.driversService.listRatings(id, {
+      page: query.page ?? 1,
+      limit: query.limit ?? 20,
     });
   }
 }

@@ -12,6 +12,7 @@ import {
   ICreateDriver,
   IDriver,
   IDriverListFilters,
+  IDriverRating,
   IDriverTrip,
   IUpdateDriver,
 } from './interfaces/driver.interface';
@@ -246,6 +247,31 @@ export class DriversService {
       destino: row.destino,
       valor: Number(row.valor),
       avaliacao: row.avaliacao ?? 0,
+    }));
+
+    return { items, meta: { page: params.page, total, limit: params.limit } };
+  }
+
+  /**
+   * Lista avaliações recebidas pelo motorista (corridas finalizadas com
+   * avaliação). Usado pela tela "Avaliações" do app motorista.
+   */
+  async listRatings(
+    id: string,
+    params: { page: number; limit: number },
+  ): Promise<PaginatedResult<IDriverRating>> {
+    await this.ensureExists(id);
+    const { rows, total } = await this.driversRepository.findRatings(id, params);
+
+    const items: IDriverRating[] = rows.map((row) => ({
+      id: row.id,
+      avaliacao: row.avaliacao ?? 0,
+      avaliacaoTags: row.avaliacaoTags ?? [],
+      origem: row.origem,
+      destino: row.destino,
+      valor: row.valor ? Number(row.valor) : 0,
+      finalizadaEm: row.finalizadaEm?.toISOString() ?? null,
+      passengerName: row.passengerName,
     }));
 
     return { items, meta: { page: params.page, total, limit: params.limit } };

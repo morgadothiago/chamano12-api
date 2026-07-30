@@ -47,6 +47,17 @@ export interface IDriverTrip {
   avaliacao: number;
 }
 
+export interface IDriverRating {
+  id: string;
+  avaliacao: number;
+  avaliacaoTags: string[];
+  origem: string;
+  destino: string;
+  valor: number;
+  finalizadaEm: string | null;
+  passengerName: string;
+}
+
 /**
  * Driver completo (GET /drivers/:id). `corridas` NÃO vem embutido aqui — é
  * lido separadamente via GET /drivers/:id/trips (ver spec seção 7).
