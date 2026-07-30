@@ -126,6 +126,28 @@ export class RidesController {
     return ride;
   }
 
+  @Post(':id/rate')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Passageiro avalia a corrida (1-5) com tags opcionais' })
+  @ApiParam({ name: 'id', description: 'ID da corrida' })
+  @ApiResponse({ status: 200, description: 'Avaliação registrada', type: RideResponseDto })
+  @ApiResponse({ status: 400, description: 'Avaliação inválida ou corrida não finalizada' })
+  async rate(
+    @Param('id') id: string,
+    @Body() body: { avaliacao: number; tags?: string[] },
+  ) {
+    const ride = await this.ridesService.rateRide(id, body.avaliacao, body.tags);
+
+    // 1 estrela = corta conexão: remove todos os sockets da sala da corrida
+    // pra evitar qualquer comunicação futura entre as partes.
+    if (body.avaliacao === 1) {
+      this.wsGateway.emitAdminEvent('blocked', id);
+      this.wsGateway.blockRideRoom(id);
+    }
+
+    return ride;
+  }
+
   @Post(':id/cancel')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Cancela uma corrida (motorista, passageiro ou sistema)' })

@@ -1,4 +1,4 @@
-import { numeric, pgTable, text, timestamp, integer, index } from 'drizzle-orm/pg-core';
+import { numeric, pgTable, text, timestamp, integer, index, varchar } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { drivers } from './drivers';
 import { rideStatusEnum, rideCanceladoPorEnum, rideFormaPagamentoEnum } from './enums';
@@ -39,6 +39,7 @@ export const rides = pgTable(
 
   // Avaliação (só após finalizada)
   avaliacao: integer('avaliacao'),
+  avaliacaoTags: text('avaliacao_tags').array(),
 
   // Timestamps de transições
   solicitadaEm: timestamp('solicitada_em').defaultNow().notNull(),

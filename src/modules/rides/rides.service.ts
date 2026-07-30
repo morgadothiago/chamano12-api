@@ -27,6 +27,7 @@ function mapRideRow(
   distanciaKm: string | null;
   formaPagamento: string | null;
   avaliacao: number | null;
+  avaliacaoTags: string[] | null;
   solicitadaEm: Date;
   aceitaEm: Date | null;
   iniciadaEm: Date | null;
@@ -55,6 +56,7 @@ function mapRideRow(
     distanciaKm: row.distanciaKm ? Number(row.distanciaKm) : null,
     formaPagamento: row.formaPagamento as RideFormaPagamento | null,
     avaliacao: row.avaliacao,
+    avaliacaoTags: row.avaliacaoTags,
     solicitadaEm: row.solicitadaEm.toISOString(),
     aceitaEm: row.aceitaEm?.toISOString() ?? null,
     iniciadaEm: row.iniciadaEm?.toISOString() ?? null,
@@ -140,6 +142,25 @@ export class RidesService {
       ? await this.ridesRepository.findPassengerAvatarUrl(row.passengerId)
       : null;
     return mapRideRow(row, avatarUrl);
+  }
+
+  async rateRide(id: string, avaliacao: number, tags?: string[]): Promise<IRide> {
+    if (avaliacao < 1 || avaliacao > 5) {
+      throw new AppException(
+        'INVALID_RATING',
+        'Avaliação deve ser entre 1 e 5.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const row = await this.ridesRepository.rateRide(id, avaliacao, tags);
+    if (!row) {
+      throw new AppException(
+        'RIDE_NOT_RATEABLE',
+        'Corrida não encontrada ou ainda não foi finalizada.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    return mapRideRow(row);
   }
 
   async cancelRide(

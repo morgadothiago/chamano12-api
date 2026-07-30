@@ -427,9 +427,12 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect, O
       client.join(`ride:${ride.id}`);
     }
 
+    const status =
+      ride.status === 'iniciada' ? 'started' : ride.status === 'aceita' ? 'accepted' : 'searching';
+
     client.emit('passenger:active-ride', {
       rideId: ride.id,
-      status: ride.status === 'iniciada' ? 'started' : 'accepted',
+      status,
       driverId: ride.driverId,
       driverName,
       driverAvatarUrl,
@@ -621,6 +624,17 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect, O
   // o painel web completa/cancela via REST (sem depender de socket do admin).
   emitAdminEvent(type: string, rideId: string): void {
     this.server.to('admin').emit('admin:ride-event', { type, rideId });
+  }
+
+  // Corta toda a comunicação da sala da corrida — usado quando o passageiro
+  // dá 1 estrela na avaliação, pra evitar qualquer contato futuro entre as
+  // partes (chat, localização, etc.).
+  blockRideRoom(rideId: string): void {
+    this.server.to(`ride:${rideId}`).emit('ride:blocked', {
+      rideId,
+      message: 'Conexão encerrada.',
+    });
+    this.server.in(`ride:${rideId}`).disconnectSockets(true);
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────

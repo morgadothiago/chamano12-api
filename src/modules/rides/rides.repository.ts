@@ -78,6 +78,15 @@ export class RidesRepository {
     return ride ?? null;
   }
 
+  async rateRide(id: string, avaliacao: number, tags?: string[]): Promise<RideRow | null> {
+    const [ride] = await this.db
+      .update(rides)
+      .set({ avaliacao, avaliacaoTags: tags ?? null, updatedAt: new Date() })
+      .where(and(eq(rides.id, id), eq(rides.status, 'finalizada')))
+      .returning();
+    return ride ?? null;
+  }
+
   async cancelRide(
     id: string,
     canceladoPor: RideCanceladoPor,
@@ -138,7 +147,7 @@ export class RidesRepository {
       .where(
         and(
           eq(rides.passengerId, passengerId),
-          inArray(rides.status, ['aceita', 'iniciada']),
+          inArray(rides.status, ['solicitada', 'aceita', 'iniciada']),
         ),
       )
       .orderBy(desc(rides.solicitadaEm))

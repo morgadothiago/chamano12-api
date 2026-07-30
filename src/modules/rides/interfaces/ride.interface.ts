@@ -39,6 +39,7 @@ export interface IRide {
   distanciaKm: number | null;
   formaPagamento: RideFormaPagamento | null;
   avaliacao: number | null;
+  avaliacaoTags: string[] | null;
   solicitadaEm: string;
   aceitaEm: string | null;
   iniciadaEm: string | null;

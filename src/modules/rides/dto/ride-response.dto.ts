@@ -18,6 +18,7 @@ export class RideResponseDto {
   @ApiProperty() valor!: number | null;
   @ApiProperty() distanciaKm!: number | null;
   @ApiProperty() avaliacao!: number | null;
+  @ApiProperty() avaliacaoTags!: string[] | null;
   @ApiProperty() solicitadaEm!: string;
   @ApiProperty() aceitaEm!: string | null;
   @ApiProperty() iniciadaEm!: string | null;

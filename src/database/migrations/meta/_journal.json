@@ -92,6 +92,13 @@
       "when": 1783830000000,
       "tag": "0012_ride_lookup_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1783840000000,
+      "tag": "0013_add_avaliacao_tags",
+      "breakpoints": true
     }
   ]
 }
