@@ -146,6 +146,10 @@ export class DriversRepository {
       .where(eq(drivers.id, id));
   }
 
+  async setOnline(id: string, online: boolean): Promise<void> {
+    await this.db.update(drivers).set({ online }).where(eq(drivers.id, id));
+  }
+
   async updateAvatarUrl(id: string, avatarUrl: string): Promise<DriverRow | null> {
     const [driver] = await this.db
       .update(drivers)

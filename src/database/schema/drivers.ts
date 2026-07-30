@@ -1,4 +1,4 @@
-import { integer, numeric, pgTable, text, timestamp, varchar } from 'drizzle-orm/pg-core';
+import { boolean, integer, numeric, pgTable, text, timestamp, varchar } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { driverStatusEnum } from './enums';
 import { users } from './users';
@@ -36,6 +36,15 @@ export const drivers = pgTable('drivers', {
   // localizacaoAtual — null enquanto motorista não está em rota
   localizacaoLat: numeric('localizacao_lat', { precision: 10, scale: 7 }),
   localizacaoLng: numeric('localizacao_lng', { precision: 10, scale: 7 }),
+
+  // Intenção persistida do motorista (ligou/desligou o toggle "Ficar
+  // Online"), separada do estado em memória do `DriverLocationStore` — uma
+  // queda de socket (rede, app em background) não deve derrubar isso.
+  // Sem essa persistência, reconectar depois de qualquer desconexão sem
+  // corrida ativa não tinha como saber que o motorista pretendia continuar
+  // disponível, e só um toggle manual (offline -> online) recriava a
+  // entrada de disponibilidade no servidor.
+  online: boolean('online').notNull().default(false),
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),

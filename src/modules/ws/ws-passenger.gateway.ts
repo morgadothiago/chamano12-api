@@ -137,6 +137,29 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect, O
                 status: 'busy',
               });
             }
+          } else if (
+            driverRecord.online &&
+            !this.locationStore.get(payload.sub) &&
+            driverRecord.localizacaoLat &&
+            driverRecord.localizacaoLng
+          ) {
+            // Motorista não tem corrida ativa, mas a intenção persistida é
+            // continuar online (`driver:go-offline` nunca foi chamado) e o
+            // `locationStore` perdeu a entrada (deletada em qualquer queda
+            // de socket, ver `handleDisconnect`). Sem isso, uma queda de
+            // rede logo após finalizar uma corrida deixava o motorista
+            // "invisível" pro dispatcher até um toggle manual (offline ->
+            // online) — igual o caso de corrida ativa acima, só que pro
+            // estado "disponível" em vez de "ocupado".
+            this.locationStore.set(payload.sub, {
+              driverId: payload.sub,
+              driverName: driverRecord.nome,
+              vehicle: `${driverRecord.veiculoModelo} ${driverRecord.veiculoPlaca}`,
+              lat: Number(driverRecord.localizacaoLat),
+              lng: Number(driverRecord.localizacaoLng),
+              status: 'available',
+            });
+            client.join('drivers');
           }
         }
 
@@ -197,6 +220,9 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect, O
       status: 'available',
     });
     client.join('drivers');
+    // Persiste a intenção de ficar online — sobrevive a quedas de socket
+    // (rede, app em background), diferente do `locationStore` (só memória).
+    await this.driversRepository.setOnline(driver.id, true);
     client.emit('driver:online-confirmed', { driverId: user.sub });
     this.logger.log(`Motorista online: ${user.name}`);
   }
@@ -242,6 +268,8 @@ export class WsAppGateway implements OnGatewayConnection, OnGatewayDisconnect, O
     const user = this.requireDriver(client);
     this.locationStore.delete(user.sub);
     client.leave('drivers');
+    const driver = await this.driversRepository.findByUserId(user.sub);
+    if (driver) await this.driversRepository.setOnline(driver.id, false);
     client.emit('driver:offline-confirmed', { driverId: user.sub });
     this.logger.log(`Motorista offline: ${user.name}`);
   }

@@ -99,6 +99,13 @@
       "when": 1783840000000,
       "tag": "0013_add_avaliacao_tags",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1783850000000,
+      "tag": "0014_add_driver_online_flag",
+      "breakpoints": true
     }
   ]
 }
